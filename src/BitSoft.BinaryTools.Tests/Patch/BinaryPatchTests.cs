@@ -26,5 +26,6 @@ public class BinaryPatchTests
         Assert.That(segment, Is.Not.Null);
         Assert.That(segment.Offset, Is.EqualTo(1));
         Assert.That(segment.Length, Is.EqualTo(3));
+        Assert.That(segment.Memory.Length, Is.EqualTo(3));
     }
 }
