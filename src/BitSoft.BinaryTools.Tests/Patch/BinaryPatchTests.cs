@@ -9,7 +9,7 @@ public class BinaryPatchTests
     [Test]
     public void Should_CreateBinaryPatch()
     {
-        // Arrance
+        // Arrange
         var original = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
         var modified = new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 };
 
