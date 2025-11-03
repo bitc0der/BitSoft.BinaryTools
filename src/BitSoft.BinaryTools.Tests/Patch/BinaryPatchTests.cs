@@ -7,7 +7,7 @@ namespace BitSoft.BinaryTools.Tests.Patch;
 public class BinaryPatchTests
 {
     [Test]
-    public void Should_CreateBinaryPatch()
+    public void Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
@@ -81,5 +81,32 @@ public class BinaryPatchTests
         Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
         Assert.That(binaryPatchSegment.Length, Is.EqualTo(1));
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
+    }
+    
+    [Test]
+    public void Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
+    {
+        // Arrange
+        var original = new byte[] { 0x0, 0x0 };
+        var modified = new byte[] { 0x0, 0x1, 0x0 };
+
+        // Act
+        var patch = BinaryPatch.Calculate(original, modified);
+
+        // Assert
+        Assert.That(patch, Is.Not.Null);
+        Assert.That(patch.Segments, Is.Not.Empty);
+        Assert.That(patch.Segments.Count, Is.EqualTo(1));
+
+        var firstSegment = patch.Segments.First();
+
+        Assert.That(firstSegment, Is.Not.Null);
+
+        var binaryPatchSegment = firstSegment as BinaryPatchSegment;
+
+        Assert.That(binaryPatchSegment, Is.Not.Null);
+        Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
+        Assert.That(binaryPatchSegment.Length, Is.EqualTo(2));
+        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(2));
     }
 }

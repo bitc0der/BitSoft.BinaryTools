@@ -29,11 +29,22 @@ public class BinaryPatch
         {
             if (originalSpan.Length == i)
             {
-                var length = modified.Length - original.Length;
-                var memory = modified.Slice(start: i, length: length);
-                var segment = new BinaryPatchSegment(offset: i, length: length, memory: memory);
-                segments.AddLast(segment);
-                break;
+                if (startIndex == NotDefined)
+                {
+                    var length = modified.Length - original.Length;
+                    var memory = modified.Slice(start: i, length: length);
+                    var segment = new BinaryPatchSegment(offset: i, length: length, memory: memory);
+                    segments.AddLast(segment);
+                    break;
+                }
+                else
+                {
+                    var length = modified.Length - startIndex;
+                    var memory = modified.Slice(start: startIndex, length: length);
+                    var segment = new BinaryPatchSegment(offset: startIndex, length: length, memory: memory);
+                    segments.AddLast(segment);
+                    break;
+                }
             }
 
             var left = originalSpan[i];
