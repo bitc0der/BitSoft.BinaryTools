@@ -27,6 +27,15 @@ public class BinaryPatch
 
         for (var i = 0; i < modified.Length; i++)
         {
+            if (originalSpan.Length == i)
+            {
+                var length = modified.Length - original.Length;
+                var memory = modified.Slice(start: i, length: length);
+                var segment = new BinaryPatchSegment(offset: i, length: length, memory: memory);
+                segments.AddLast(segment);
+                break;
+            }
+
             var left = originalSpan[i];
             var right = modifiedSpan[i];
 
