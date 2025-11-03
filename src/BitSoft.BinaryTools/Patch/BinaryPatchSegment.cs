@@ -2,7 +2,7 @@ using System;
 
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class BinaryPatchSegment
+public sealed class BinaryPatchSegment : IBinaryPatchSegment
 {
     public int Offset { get; }
     public int Length { get; }

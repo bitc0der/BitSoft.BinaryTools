@@ -24,8 +24,12 @@ public class BinaryPatchTests
         var segment = patch.Segments.First();
         
         Assert.That(segment, Is.Not.Null);
-        Assert.That(segment.Offset, Is.EqualTo(1));
-        Assert.That(segment.Length, Is.EqualTo(3));
-        Assert.That(segment.Memory.Length, Is.EqualTo(3));
+        
+        var binatyPatchSegment = segment as BinaryPatchSegment;
+        
+        Assert.That(binatyPatchSegment, Is.Not.Null);
+        Assert.That(binatyPatchSegment.Offset, Is.EqualTo(1));
+        Assert.That(binatyPatchSegment.Length, Is.EqualTo(3));
+        Assert.That(binatyPatchSegment.Memory.Length, Is.EqualTo(3));
     }
 }

@@ -5,18 +5,18 @@ namespace BitSoft.BinaryTools.Patch;
 
 public class BinaryPatch
 {
-    private readonly LinkedList<BinaryPatchSegment> _segments;
+    private readonly LinkedList<IBinaryPatchSegment> _segments;
 
-    public IReadOnlyCollection<BinaryPatchSegment> Segments => _segments;
+    public IReadOnlyCollection<IBinaryPatchSegment> Segments => _segments;
 
-    private BinaryPatch(LinkedList<BinaryPatchSegment> segments)
+    private BinaryPatch(LinkedList<IBinaryPatchSegment> segments)
     {
         _segments = segments ?? throw new ArgumentNullException(nameof(segments));
     }
 
     public static BinaryPatch Calculate(ReadOnlyMemory<byte> original, ReadOnlyMemory<byte> modified)
     {
-        var segments = new LinkedList<BinaryPatchSegment>();
+        var segments = new LinkedList<IBinaryPatchSegment>();
 
         const int NotDefined = -1;
 
