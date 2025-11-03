@@ -1,8 +1,8 @@
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class EndOfFilePathSegment : IBinaryPatchSegment
+public sealed class EndOfFilePatchSegment : IBinaryPatchSegment
 {
-    public EndOfFilePathSegment(int offset)
+    public EndOfFilePatchSegment(int offset)
     {
         Offset = offset;
     }

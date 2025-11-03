@@ -50,7 +50,7 @@ public class BinaryPatch
 
         if (modified.Length < original.Length)
         {
-            segments.AddLast(new EndOfFilePathSegment(offset: modified.Length));
+            segments.AddLast(new EndOfFilePatchSegment(offset: modified.Length));
         }
 
         return new BinaryPatch(segments);

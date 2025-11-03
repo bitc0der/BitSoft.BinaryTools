@@ -51,7 +51,7 @@ public class BinaryPatchTests
         var segment = patch.Segments.First();
         
         Assert.That(segment, Is.Not.Null);
-        var binaryPatchSegment = segment as EndOfFilePathSegment;
+        var binaryPatchSegment = segment as EndOfFilePatchSegment;
         Assert.That(binaryPatchSegment, Is.Not.Null);
         Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
     }
