@@ -48,6 +48,11 @@ public class BinaryPatch
                 startIndex = i;
         }
 
+        if (modified.Length < original.Length)
+        {
+            segments.AddLast(new EndOfFilePathSegment(offset: modified.Length));
+        }
+
         return new BinaryPatch(segments);
     }
 }
