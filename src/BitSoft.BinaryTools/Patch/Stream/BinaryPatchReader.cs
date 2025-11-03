@@ -23,10 +23,15 @@ public sealed class BinaryPatchReader
         ArgumentNullException.ThrowIfNull(binaryPatch);
         ArgumentNullException.ThrowIfNull(output);
 
+        using var originalRreader = new BinaryReader(original, Encoding);
         using var binaryPathReader = new BinaryReader(binaryPatch, Encoding);
         await using var writer = new BinaryWriter(output, Encoding);
 
-        byte[]? buffer = null;
+        byte[]? originalBuffer = null;
+        byte[]? patchBuffer = null;
+
+        int segmentSize = 0;
+        long blockIndex = 0;
 
         try
         {
@@ -37,12 +42,25 @@ public sealed class BinaryPatchReader
                 switch (segmentType)
                 {
                     case BinaryPatchConst.SegmentType.Header:
-                        var segmentSize = ReadHeader(binaryPathReader);
-                        buffer = Pool.Rent(segmentSize);
+                        segmentSize = ReadHeader(binaryPathReader);
+                        originalBuffer = Pool.Rent(segmentSize);
+                        patchBuffer = Pool.Rent(segmentSize);
                         break;
                     case BinaryPatchConst.SegmentType.Data:
-                        if (buffer is null) throw new InvalidOperationException("Wrong segment sequence");
-                        var length = ReadDataSegment(binaryPathReader, buffer);
+                        if (originalBuffer is null || patchBuffer is null)
+                            throw new InvalidOperationException("Wrong segment sequence");
+
+                        var (patchSegmentIndex, segmentLength) = ReadDataSegment(binaryPathReader, patchBuffer);
+
+                        while (blockIndex < patchSegmentIndex)
+                        {
+                            var length = originalRreader.Read(originalBuffer, index: 0, count: segmentSize);
+                            if (length > 0)
+                                writer.Write(originalBuffer, index: 0, count: length);
+                            blockIndex += 1;
+                        }
+
+                        writer.Write(patchBuffer, index: 0, count: segmentLength);
                         break;
                     default:
                         throw new InvalidOperationException("Invalid segment type");
@@ -51,26 +69,27 @@ public sealed class BinaryPatchReader
         }
         finally
         {
-            Pool.Return(buffer);
+            if (originalBuffer is not null)
+                Pool.Return(originalBuffer);
+            if (patchBuffer is not null)
+                Pool.Return(patchBuffer);
         }
     }
 
-    private static int ReadDataSegment(BinaryReader binaryPatch, byte[] buffer)
+    private static (long BlockIndex, int SegmentLength) ReadDataSegment(BinaryReader binaryPatch, byte[] buffer)
     {
         ArgumentNullException.ThrowIfNull(binaryPatch);
 
         var blockIndex = binaryPatch.ReadInt64();
-        var length = binaryPatch.ReadInt32();
-
-        if (length > buffer.Length)
+        var bufferLength = binaryPatch.ReadInt32();
+        if (bufferLength > buffer.Length)
             throw new InvalidOperationException("Invalid segment length");
 
-        var result = binaryPatch.Read(buffer, 0, length);
-
-        if (result != length)
+        var length = binaryPatch.Read(buffer, 0, bufferLength);
+        if (length != bufferLength)
             throw new InvalidOperationException("Invalid result length");
 
-        return result;
+        return (BlockIndex: blockIndex, SegmentLength: length);
     }
 
     private static int ReadHeader(BinaryReader binaryPatch)
