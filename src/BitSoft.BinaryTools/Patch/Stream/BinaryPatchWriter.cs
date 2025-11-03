@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch.Stream;
 
-public sealed class BinaryPatchWriter
+public static class BinaryPatchWriter
 {
+    private static readonly Encoding Encoding = Encoding.UTF8;
+
     public static async ValueTask WritePatchAsync(
         System.IO.Stream original,
         System.IO.Stream modified,
@@ -20,7 +22,7 @@ public sealed class BinaryPatchWriter
         ArgumentNullException.ThrowIfNull(modified);
         ArgumentNullException.ThrowIfNull(output);
 
-        await using var writer = new BinaryWriter(output, encoding: Encoding.UTF8);
+        await using var writer = new BinaryWriter(output, encoding: Encoding.UTF8, leaveOpen: true);
 
         WriteHeaderSegment(writer, segmentSize);
 
@@ -35,8 +37,12 @@ public sealed class BinaryPatchWriter
         {
             while (true)
             {
-                var leftCount = original.CanRead ? await original.ReadAsync(leftBuffer, cancellationToken) : 0;
-                var rightCount = modified.CanRead ? await modified.ReadAsync(rightBuffer, cancellationToken) : 0;
+                var leftCount = original.CanRead
+                    ? await original.ReadAsync(leftBuffer, offset: 0, count: segmentSize, cancellationToken)
+                    : 0;
+                var rightCount = modified.CanRead
+                    ? await modified.ReadAsync(rightBuffer, offset: 0, count: segmentSize, cancellationToken)
+                    : 0;
 
                 if (leftCount == 0 && rightCount == 0)
                     break;
@@ -75,9 +81,13 @@ public sealed class BinaryPatchWriter
     {
         ArgumentNullException.ThrowIfNull(writer);
 
+        const string header = BinaryPatchConst.Header;
+        var headerLength = Encoding.GetByteCount(header);
+
         writer.Write(BinaryPatchConst.SegmentType.Header);
-        writer.Write(BinaryPatchConst.Header);
         writer.Write(BinaryPatchConst.ProtocolVersion);
+        writer.Write(headerLength);
+        writer.Write(header);
         writer.Write(segmentSize);
     }
 

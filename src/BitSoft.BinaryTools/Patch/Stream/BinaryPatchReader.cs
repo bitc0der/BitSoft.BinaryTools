@@ -7,17 +7,17 @@ using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch.Stream;
 
-public sealed class BinaryPatchReader
+public static class BinaryPatchReader
 {
     private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
 
     private static readonly Encoding Encoding = Encoding.UTF8;
 
-    public async ValueTask ApplyAsync(
+    public static async ValueTask ApplyAsync(
         System.IO.Stream original,
         System.IO.Stream binaryPatch,
         System.IO.Stream output,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(original);
         ArgumentNullException.ThrowIfNull(binaryPatch);
@@ -37,6 +37,8 @@ public sealed class BinaryPatchReader
         {
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var segmentType = binaryPathReader.ReadByte();
 
                 switch (segmentType)
@@ -92,21 +94,21 @@ public sealed class BinaryPatchReader
         return (BlockIndex: blockIndex, SegmentLength: length);
     }
 
-    private static int ReadHeader(BinaryReader binaryPatch)
+    private static int ReadHeader(BinaryReader reader)
     {
-        ArgumentNullException.ThrowIfNull(binaryPatch);
+        ArgumentNullException.ThrowIfNull(reader);
 
-        var segmentType = binaryPatch.ReadByte();
+        var protocolVersion = reader.ReadInt32();
 
-        if (segmentType != BinaryPatchConst.SegmentType.Header)
-            throw new InvalidOperationException("Invalid segment type");
+        if (protocolVersion > BinaryPatchConst.ProtocolVersion)
+            throw new InvalidOperationException("Invalid protocol version");
 
-        var expectedLength = Encoding.GetByteCount(BinaryPatchConst.Header);
+        var expectedLength = reader.ReadInt32();
 
         var buffer = Pool.Rent(minimumLength: expectedLength);
         try
         {
-            var length = binaryPatch.Read(buffer, index: 0, count: expectedLength);
+            var length = reader.Read(buffer, index: 0, count: expectedLength);
 
             if (length != expectedLength)
                 throw new InvalidOperationException("Invalid prefix length");
@@ -121,12 +123,7 @@ public sealed class BinaryPatchReader
             Pool.Return(buffer);
         }
 
-        var protocolVersion = binaryPatch.ReadInt32();
-
-        if (protocolVersion > BinaryPatchConst.ProtocolVersion)
-            throw new InvalidOperationException("Invalid protocol version");
-
-        var segmentSize = binaryPatch.ReadInt32();
+        var segmentSize = reader.ReadInt32();
 
         return segmentSize;
     }
