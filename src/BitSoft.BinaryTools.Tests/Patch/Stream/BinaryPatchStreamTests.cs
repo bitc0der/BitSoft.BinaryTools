@@ -8,7 +8,7 @@ namespace BitSoft.BinaryTools.Tests.Patch.Stream;
 public class BinaryPatchStreamTests
 {
     [Test]
-    public async Task Test()
+    public async Task Should_WriteToStream()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1, 0x2 };
@@ -31,6 +31,6 @@ public class BinaryPatchStreamTests
 
         var patched = patchedStream.ToArray();
 
-        Assert.That(modified, Is.EqualTo(patched));
+        Assert.That(patched, Is.EqualTo(modified));
     }
 }

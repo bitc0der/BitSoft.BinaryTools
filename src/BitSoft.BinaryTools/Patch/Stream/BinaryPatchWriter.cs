@@ -28,7 +28,7 @@ public static class BinaryPatchWriter
         var leftBuffer = pool.Rent(segmentSize);
         var rightBuffer = pool.Rent(segmentSize);
 
-        long blockIndex = 1;
+        long blockIndex = 0;
 
         try
         {
@@ -46,7 +46,7 @@ public static class BinaryPatchWriter
 
                 if (leftCount < rightCount)
                 {
-                    WriteDataSegment(writer, blockIndex, leftBuffer, leftCount);
+                    WriteDataSegment(writer, blockIndex, rightBuffer, rightCount);
                 }
                 else if (leftCount >= rightCount)
                 {
@@ -58,7 +58,7 @@ public static class BinaryPatchWriter
                         if (left == right)
                             continue;
 
-                        WriteDataSegment(writer, blockIndex, leftBuffer, leftCount);
+                        WriteDataSegment(writer, blockIndex, rightBuffer, rightCount);
 
                         break;
                     }
