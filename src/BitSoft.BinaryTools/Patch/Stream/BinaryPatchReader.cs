@@ -98,6 +98,11 @@ public static class BinaryPatchReader
     {
         ArgumentNullException.ThrowIfNull(reader);
 
+        var prefix = reader.ReadString();
+
+        if (prefix != BinaryPatchConst.Prefix)
+            throw new InvalidOperationException("Invalid prefix.");
+
         var protocolVersion = reader.ReadInt32();
 
         if (protocolVersion > BinaryPatchConst.ProtocolVersion)

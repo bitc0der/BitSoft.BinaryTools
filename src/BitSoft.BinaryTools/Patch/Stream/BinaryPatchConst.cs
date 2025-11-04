@@ -6,9 +6,9 @@ internal static class BinaryPatchConst
 {
     public static Encoding Encoding { get; } = Encoding.UTF8;
 
-    public const string Prefix = "BPT";
+    public const string Prefix = "BINPATCH";
 
-    public const int ProtocolVersion = 2;
+    public const int ProtocolVersion = 1;
 
     public static class SegmentType
     {

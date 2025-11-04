@@ -81,6 +81,7 @@ public static class BinaryPatchWriter
         ArgumentNullException.ThrowIfNull(writer);
 
         writer.Write(BinaryPatchConst.SegmentType.Header);
+        writer.Write(BinaryPatchConst.Prefix);
         writer.Write(BinaryPatchConst.ProtocolVersion);
         writer.Write(segmentSize);
     }
