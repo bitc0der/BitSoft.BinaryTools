@@ -40,6 +40,8 @@ public static class BinaryPatchWriter
         {
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var leftCount = original.CanRead
                     ? await original.ReadAsync(leftBuffer, offset: 0, count: segmentSize, cancellationToken)
                     : 0;
