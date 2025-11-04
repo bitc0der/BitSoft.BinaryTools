@@ -18,7 +18,7 @@ public static class BinaryPatchReader
         ArgumentNullException.ThrowIfNull(binaryPatch);
         ArgumentNullException.ThrowIfNull(output);
 
-        settings ??= new BinaryPatchReaderSettings();
+        settings ??= BinaryPatchReaderSettings.Default;
 
         using var originalReader = new BinaryReader(original, BinaryPatchConst.Encoding);
         using var binaryPatchReader = new BinaryReader(binaryPatch, BinaryPatchConst.Encoding);

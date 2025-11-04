@@ -6,5 +6,5 @@ public class BinaryPatchReaderSettings
 {
     public static BinaryPatchReaderSettings Default { get; } = new();
 
-    public ArrayPool<byte> ArrayPool { get; set; } = ArrayPool<byte>.Shared;
+    public ArrayPool<byte> ArrayPool { get; init; } = ArrayPool<byte>.Shared;
 }

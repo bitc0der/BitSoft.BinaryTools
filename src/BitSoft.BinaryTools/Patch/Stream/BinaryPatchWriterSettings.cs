@@ -6,7 +6,7 @@ public class BinaryPatchWriterSettings
 {
     public static BinaryPatchWriterSettings Default { get; } = new();
 
-    public int SegmentSize { get; set; } = 1024;
+    public int SegmentSize { get; init; } = 1024;
 
-    public ArrayPool<byte> ArrayPool { get; set; } = ArrayPool<byte>.Shared;
+    public ArrayPool<byte> ArrayPool { get; init; } = ArrayPool<byte>.Shared;
 }

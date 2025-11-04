@@ -27,7 +27,7 @@ public class BinaryPatchStreamTests
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
-        // Act
+        // Actıı
         await BinaryPatchWriter.WritePatchAsync(
             original: originalStream,
             modified: modifiedStream,
