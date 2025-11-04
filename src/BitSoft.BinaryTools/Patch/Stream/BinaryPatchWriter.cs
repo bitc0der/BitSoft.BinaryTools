@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,18 +11,22 @@ public static class BinaryPatchWriter
         System.IO.Stream original,
         System.IO.Stream modified,
         System.IO.Stream output,
-        int segmentSize = 1024,
+        BinaryPatchWriterSettings? settings = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(original);
         ArgumentNullException.ThrowIfNull(modified);
         ArgumentNullException.ThrowIfNull(output);
 
+        settings ??= BinaryPatchWriterSettings.Default;
+
         await using var writer = new BinaryWriter(output, encoding: BinaryPatchConst.Encoding, leaveOpen: true);
+
+        var segmentSize = settings.SegmentSize;
 
         WriteHeaderSegment(writer, segmentSize);
 
-        var pool = ArrayPool<byte>.Shared;
+        var pool = settings.ArrayPool;
 
         var leftBuffer = pool.Rent(segmentSize);
         var rightBuffer = pool.Rent(segmentSize);

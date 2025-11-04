@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,21 +7,24 @@ namespace BitSoft.BinaryTools.Patch.Stream;
 
 public static class BinaryPatchReader
 {
-    private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
-
     public static async ValueTask ApplyAsync(
         System.IO.Stream original,
         System.IO.Stream binaryPatch,
         System.IO.Stream output,
+        BinaryPatchReaderSettings? settings = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(original);
         ArgumentNullException.ThrowIfNull(binaryPatch);
         ArgumentNullException.ThrowIfNull(output);
 
-        using var originalRreader = new BinaryReader(original, BinaryPatchConst.Encoding);
+        settings ??= new BinaryPatchReaderSettings();
+
+        using var originalReader = new BinaryReader(original, BinaryPatchConst.Encoding);
         using var binaryPatchReader = new BinaryReader(binaryPatch, BinaryPatchConst.Encoding);
-        await using var writer = new BinaryWriter(output, BinaryPatchConst.Encoding);
+        await using var resultWriter = new BinaryWriter(output, BinaryPatchConst.Encoding);
+
+        var pool = settings.ArrayPool;
 
         byte[]? originalBuffer = null;
         byte[]? patchBuffer = null;
@@ -42,8 +44,8 @@ public static class BinaryPatchReader
                 {
                     case BinaryPatchConst.SegmentType.Header:
                         segmentSize = ReadHeader(binaryPatchReader);
-                        originalBuffer = Pool.Rent(segmentSize);
-                        patchBuffer = Pool.Rent(segmentSize);
+                        originalBuffer = pool.Rent(segmentSize);
+                        patchBuffer = pool.Rent(segmentSize);
                         break;
                     case BinaryPatchConst.SegmentType.Data:
                         if (originalBuffer is null || patchBuffer is null)
@@ -53,13 +55,13 @@ public static class BinaryPatchReader
 
                         while (blockIndex < patchSegmentIndex)
                         {
-                            var length = originalRreader.Read(originalBuffer, index: 0, count: segmentSize);
+                            var length = originalReader.Read(originalBuffer, index: 0, count: segmentSize);
                             if (length > 0)
-                                writer.Write(originalBuffer, index: 0, count: length);
+                                resultWriter.Write(originalBuffer, index: 0, count: length);
                             blockIndex += 1;
                         }
 
-                        writer.Write(patchBuffer, index: 0, count: segmentLength);
+                        resultWriter.Write(patchBuffer, index: 0, count: segmentLength);
                         break;
                     case BinaryPatchConst.SegmentType.End:
                         return;
@@ -71,9 +73,9 @@ public static class BinaryPatchReader
         finally
         {
             if (originalBuffer is not null)
-                Pool.Return(originalBuffer);
+                pool.Return(originalBuffer);
             if (patchBuffer is not null)
-                Pool.Return(patchBuffer);
+                pool.Return(patchBuffer);
         }
     }
 

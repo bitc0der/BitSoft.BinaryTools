@@ -23,20 +23,31 @@ public class BinaryPatchStreamTests
     public async Task Should_WriteToStream(byte[] original, byte[] modified, int segmentSize)
     {
         // Arrange
-        using var originStream = new MemoryStream(original);
+        using var originalStream = new MemoryStream(original);
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
         // Act
-        await BinaryPatchWriter.WritePatchAsync(originStream, modifiedStream, patchStream, segmentSize: segmentSize);
+        await BinaryPatchWriter.WritePatchAsync(
+            original: originalStream,
+            modified: modifiedStream,
+            output: patchStream,
+            settings: new BinaryPatchWriterSettings
+            {
+                SegmentSize = segmentSize
+            });
 
         // Assert
-        originStream.Position = 0;
+        originalStream.Position = 0;
         patchStream.Position = 0;
 
         using var patchedStream = new MemoryStream();
 
-        await BinaryPatchReader.ApplyAsync(originStream, patchStream, patchedStream);
+        await BinaryPatchReader.ApplyAsync(
+            original: originalStream,
+            binaryPatch: patchStream,
+            output: patchedStream
+        );
 
         var patched = patchedStream.ToArray();
 
