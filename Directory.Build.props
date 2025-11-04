@@ -1,0 +1,25 @@
+﻿<Project>
+  <PropertyGroup>
+    <Authors>bitc0der</Authors>
+    <Copyright>Copyright 2025 © bitc0der</Copyright>
+    <Company>bitc0der</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/bitc0der/BitSoft.BinaryTools</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bitc0der/BitSoft.BinaryTools</RepositoryUrl>
+    <VersionPrefix>0.0.1</VersionPrefix>
+
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+</Project>
