@@ -21,7 +21,7 @@ public static class BinaryPatchReader
         ArgumentNullException.ThrowIfNull(output);
 
         using var originalRreader = new BinaryReader(original, BinaryPatchConst.Encoding);
-        using var binaryPathReader = new BinaryReader(binaryPatch, BinaryPatchConst.Encoding);
+        using var binaryPatchReader = new BinaryReader(binaryPatch, BinaryPatchConst.Encoding);
         await using var writer = new BinaryWriter(output, BinaryPatchConst.Encoding);
 
         byte[]? originalBuffer = null;
@@ -32,16 +32,16 @@ public static class BinaryPatchReader
 
         try
         {
-            while (binaryPathReader.BaseStream.CanRead)
+            while (binaryPatchReader.BaseStream.CanRead)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var segmentType = binaryPathReader.ReadByte();
+                var segmentType = binaryPatchReader.ReadByte();
 
                 switch (segmentType)
                 {
                     case BinaryPatchConst.SegmentType.Header:
-                        segmentSize = ReadHeader(binaryPathReader);
+                        segmentSize = ReadHeader(binaryPatchReader);
                         originalBuffer = Pool.Rent(segmentSize);
                         patchBuffer = Pool.Rent(segmentSize);
                         break;
@@ -49,7 +49,7 @@ public static class BinaryPatchReader
                         if (originalBuffer is null || patchBuffer is null)
                             throw new InvalidOperationException("Wrong segment sequence");
 
-                        var (patchSegmentIndex, segmentLength) = ReadDataSegment(binaryPathReader, patchBuffer);
+                        var (patchSegmentIndex, segmentLength) = ReadDataSegment(binaryPatchReader, patchBuffer);
 
                         while (blockIndex < patchSegmentIndex)
                         {
@@ -80,13 +80,14 @@ public static class BinaryPatchReader
     private static (long BlockIndex, int SegmentLength) ReadDataSegment(BinaryReader binaryPatch, byte[] buffer)
     {
         ArgumentNullException.ThrowIfNull(binaryPatch);
+        ArgumentNullException.ThrowIfNull(buffer);
 
         var blockIndex = binaryPatch.ReadInt64();
         var bufferLength = binaryPatch.ReadInt32();
         if (bufferLength > buffer.Length)
             throw new InvalidOperationException("Invalid segment length");
 
-        var length = binaryPatch.Read(buffer, 0, bufferLength);
+        var length = binaryPatch.Read(buffer, index: 0, count: bufferLength);
         if (length != bufferLength)
             throw new InvalidOperationException("Invalid result length");
 

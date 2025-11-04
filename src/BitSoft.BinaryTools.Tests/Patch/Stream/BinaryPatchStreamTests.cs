@@ -16,18 +16,18 @@ public class BinaryPatchStreamTests
 
         using var originStream = new MemoryStream(original);
         using var modifiedStream = new MemoryStream(modified);
-        using var outputStream = new MemoryStream();
+        using var patchStream = new MemoryStream();
 
         // Act
-        await BinaryPatchWriter.WritePatchAsync(originStream, modifiedStream, outputStream, segmentSize: 1);
+        await BinaryPatchWriter.WritePatchAsync(originStream, modifiedStream, patchStream, segmentSize: 1);
 
         // Assert
         originStream.Position = 0;
-        outputStream.Position = 0;
+        patchStream.Position = 0;
 
         using var patchedStream = new MemoryStream();
 
-        await BinaryPatchReader.ApplyAsync(originStream, outputStream, patchedStream);
+        await BinaryPatchReader.ApplyAsync(originStream, patchStream, patchedStream);
 
         var patched = patchedStream.ToArray();
 
