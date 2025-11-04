@@ -1,7 +1,6 @@
 using System;
 using System.Buffers;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,8 +8,6 @@ namespace BitSoft.BinaryTools.Patch.Stream;
 
 public static class BinaryPatchWriter
 {
-    private static readonly Encoding Encoding = Encoding.UTF8;
-
     public static async ValueTask WritePatchAsync(
         System.IO.Stream original,
         System.IO.Stream modified,
@@ -22,7 +19,7 @@ public static class BinaryPatchWriter
         ArgumentNullException.ThrowIfNull(modified);
         ArgumentNullException.ThrowIfNull(output);
 
-        await using var writer = new BinaryWriter(output, encoding: Encoding.UTF8, leaveOpen: true);
+        await using var writer = new BinaryWriter(output, encoding: BinaryPatchConst.Encoding, leaveOpen: true);
 
         WriteHeaderSegment(writer, segmentSize);
 
@@ -81,13 +78,12 @@ public static class BinaryPatchWriter
     {
         ArgumentNullException.ThrowIfNull(writer);
 
-        const string header = BinaryPatchConst.Header;
-        var headerLength = Encoding.GetByteCount(header);
-
         writer.Write(BinaryPatchConst.SegmentType.Header);
         writer.Write(BinaryPatchConst.ProtocolVersion);
-        writer.Write(headerLength);
+
+        const string header = BinaryPatchConst.Prefix;
         writer.Write(header);
+
         writer.Write(segmentSize);
     }
 

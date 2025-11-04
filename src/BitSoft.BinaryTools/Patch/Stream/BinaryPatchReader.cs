@@ -11,8 +11,6 @@ public static class BinaryPatchReader
 {
     private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
 
-    private static readonly Encoding Encoding = Encoding.UTF8;
-
     public static async ValueTask ApplyAsync(
         System.IO.Stream original,
         System.IO.Stream binaryPatch,
@@ -23,9 +21,9 @@ public static class BinaryPatchReader
         ArgumentNullException.ThrowIfNull(binaryPatch);
         ArgumentNullException.ThrowIfNull(output);
 
-        using var originalRreader = new BinaryReader(original, Encoding);
-        using var binaryPathReader = new BinaryReader(binaryPatch, Encoding);
-        await using var writer = new BinaryWriter(output, Encoding);
+        using var originalRreader = new BinaryReader(original, BinaryPatchConst.Encoding);
+        using var binaryPathReader = new BinaryReader(binaryPatch, BinaryPatchConst.Encoding);
+        await using var writer = new BinaryWriter(output, BinaryPatchConst.Encoding);
 
         byte[]? originalBuffer = null;
         byte[]? patchBuffer = null;
@@ -106,16 +104,16 @@ public static class BinaryPatchReader
         var expectedLength = reader.ReadInt32();
 
         var buffer = Pool.Rent(minimumLength: expectedLength);
+
         try
         {
-            var length = reader.Read(buffer, index: 0, count: expectedLength);
-
+            var length = reader.Read(buffer.AsSpan(start: 0, length: expectedLength));
             if (length != expectedLength)
                 throw new InvalidOperationException("Invalid prefix length");
 
             var value = Encoding.UTF8.GetString(buffer, index: 0, count: length);
 
-            if (value != BinaryPatchConst.Header)
+            if (value != BinaryPatchConst.Prefix)
                 throw new InvalidOperationException($"Invalid header value '{value}'");
         }
         finally
