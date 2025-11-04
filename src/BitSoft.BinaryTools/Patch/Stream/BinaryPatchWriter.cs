@@ -41,14 +41,14 @@ public static class BinaryPatchWriter
                     ? await modified.ReadAsync(rightBuffer, offset: 0, count: segmentSize, cancellationToken)
                     : 0;
 
-                if (leftCount == 0 && rightCount == 0)
+                if (rightCount == 0)
                     break;
 
                 if (leftCount < rightCount)
                 {
                     WriteDataSegment(writer, blockIndex, rightBuffer, rightCount);
                 }
-                else if (leftCount >= rightCount)
+                else if (leftCount == rightCount)
                 {
                     for (var i = 0; i < leftCount; i++)
                     {
@@ -62,6 +62,10 @@ public static class BinaryPatchWriter
 
                         break;
                     }
+                }
+                else
+                {
+                    WriteDataSegment(writer, blockIndex, rightBuffer, rightCount);
                 }
 
                 blockIndex += 1;
