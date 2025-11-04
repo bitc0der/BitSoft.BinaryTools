@@ -66,6 +66,8 @@ public static class BinaryPatchWriter
 
                 blockIndex += 1;
             }
+
+            writer.Write(BinaryPatchConst.SegmentType.End);
         }
         finally
         {
@@ -80,10 +82,6 @@ public static class BinaryPatchWriter
 
         writer.Write(BinaryPatchConst.SegmentType.Header);
         writer.Write(BinaryPatchConst.ProtocolVersion);
-
-        const string header = BinaryPatchConst.Prefix;
-        writer.Write(header);
-
         writer.Write(segmentSize);
     }
 

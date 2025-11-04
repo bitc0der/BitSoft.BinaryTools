@@ -1,7 +1,6 @@
 using System;
 using System.Buffers;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,7 +32,7 @@ public static class BinaryPatchReader
 
         try
         {
-            while (true)
+            while (binaryPathReader.BaseStream.CanRead)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -62,6 +61,8 @@ public static class BinaryPatchReader
 
                         writer.Write(patchBuffer, index: 0, count: segmentLength);
                         break;
+                    case BinaryPatchConst.SegmentType.End:
+                        return;
                     default:
                         throw new InvalidOperationException("Invalid segment type");
                 }
@@ -100,26 +101,6 @@ public static class BinaryPatchReader
 
         if (protocolVersion > BinaryPatchConst.ProtocolVersion)
             throw new InvalidOperationException("Invalid protocol version");
-
-        var expectedLength = reader.ReadInt32();
-
-        var buffer = Pool.Rent(minimumLength: expectedLength);
-
-        try
-        {
-            var length = reader.Read(buffer.AsSpan(start: 0, length: expectedLength));
-            if (length != expectedLength)
-                throw new InvalidOperationException("Invalid prefix length");
-
-            var value = Encoding.UTF8.GetString(buffer, index: 0, count: length);
-
-            if (value != BinaryPatchConst.Prefix)
-                throw new InvalidOperationException($"Invalid header value '{value}'");
-        }
-        finally
-        {
-            Pool.Return(buffer);
-        }
 
         var segmentSize = reader.ReadInt32();
 

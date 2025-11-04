@@ -14,5 +14,7 @@ internal static class BinaryPatchConst
     {
         public const byte Header = 1;
         public const byte Data = 2;
+
+        public const byte End = byte.MaxValue;
     }
 }
