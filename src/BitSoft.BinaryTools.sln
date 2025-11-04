@@ -13,6 +13,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSoft.BinaryTools", "BitS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSoft.BinaryTools.Tests", "BitSoft.BinaryTools.Tests\BitSoft.BinaryTools.Tests.csproj", "{BE7275D4-BCC8-4E39-9DDC-6FE0426D650C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{2C6A0F9D-48B5-40FD-A0FF-45ECA8034BB9}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\dotnet.yml = ..\.github\workflows\dotnet.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,5 +32,8 @@ Global
 		{BE7275D4-BCC8-4E39-9DDC-6FE0426D650C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE7275D4-BCC8-4E39-9DDC-6FE0426D650C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE7275D4-BCC8-4E39-9DDC-6FE0426D650C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2C6A0F9D-48B5-40FD-A0FF-45ECA8034BB9} = {1B0803C7-C282-44FB-B1C9-6199FD6E1122}
 	EndGlobalSection
 EndGlobal
