@@ -34,7 +34,7 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnEndOfFilePathSegment_When_ModifiedShorterThanOriginal()
+    public void Should_ReturnEndOfFilePatchSegment_When_ModifiedShorterThanOriginal()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1 };
@@ -82,7 +82,7 @@ public class BinaryPatchTests
         Assert.That(binaryPatchSegment.Length, Is.EqualTo(1));
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
     }
-    
+
     [Test]
     public void Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
     {
