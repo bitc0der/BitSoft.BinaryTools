@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ public class BinaryPatchStreamTests
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
-        // Actıı
+        // Act
         await BinaryPatchWriter.WritePatchAsync(
             original: originalStream,
             modified: modifiedStream,
@@ -52,5 +53,25 @@ public class BinaryPatchStreamTests
         var patched = patchedStream.ToArray();
 
         Assert.That(patched, Is.EqualTo(modified));
+    }
+
+    [TestCase(0)]
+    [TestCase(-1)]
+    public void Should_Throw_When_SegmentSizeIsInvalid(int segmentSize)
+    {
+        using var originalStream = new MemoryStream([0x0]);
+        using var modifiedStream = new MemoryStream([0x0]);
+        using var patchStream = new MemoryStream();
+
+        // Act
+        Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await BinaryPatchWriter.WritePatchAsync(
+            original: originalStream,
+            modified: modifiedStream,
+            output: patchStream,
+            settings: new BinaryPatchWriterSettings
+            {
+                SegmentSize = segmentSize
+            })
+        );
     }
 }

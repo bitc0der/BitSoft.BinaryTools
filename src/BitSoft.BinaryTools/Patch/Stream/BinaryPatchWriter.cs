@@ -24,6 +24,9 @@ public static class BinaryPatchWriter
 
         var segmentSize = settings.SegmentSize;
 
+        if (segmentSize <= 0)
+            throw new ArgumentOutOfRangeException(message: "Invalid segment size.", paramName: nameof(segmentSize));
+
         WriteHeaderSegment(writer, segmentSize);
 
         var pool = settings.ArrayPool;
@@ -72,6 +75,9 @@ public static class BinaryPatchWriter
                 }
 
                 blockIndex += 1;
+
+                if (blockIndex == long.MaxValue)
+                    throw new InvalidOperationException("Block size is too small");
             }
 
             writer.Write(BinaryPatchConst.SegmentType.End);
