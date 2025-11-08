@@ -6,10 +6,10 @@ namespace BitSoft.BinaryTools.Patch;
 
 public sealed class BinaryPatchSource
 {
-    private readonly IReadOnlyDictionary<uint, List<Block>> _hashes;
+    private readonly IReadOnlyDictionary<uint, List<PatchBlockInfo>> _hashes;
     private readonly int _blockSize;
 
-    private BinaryPatchSource(IReadOnlyDictionary<uint, List<Block>> hashes, int blockSize)
+    private BinaryPatchSource(IReadOnlyDictionary<uint, List<PatchBlockInfo>> hashes, int blockSize)
     {
         _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
         _blockSize = blockSize;
@@ -122,9 +122,9 @@ public sealed class BinaryPatchSource
         }
     }
 
-    private static IReadOnlyDictionary<uint, List<Block>> CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
+    private static IReadOnlyDictionary<uint, List<PatchBlockInfo>> CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
     {
-        var hashes = new Dictionary<uint, List<Block>>();
+        var hashes = new Dictionary<uint, List<PatchBlockInfo>>();
 
         var blockIndex = 0;
 
@@ -140,7 +140,7 @@ public sealed class BinaryPatchSource
 
             var hash = RollingHash.Create(slice.Span);
             var checksum = hash.GetChecksum();
-            var block = new Block(blockIndex, checksum, length);
+            var block = new PatchBlockInfo(blockIndex, checksum, length);
 
             if (!hashes.TryGetValue(checksum, out var blocks))
             {

@@ -1,8 +1,8 @@
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class Block
+public sealed class PatchBlockInfo
 {
-    public Block(int blockIndex, uint hash, int length)
+    public PatchBlockInfo(int blockIndex, uint hash, int length)
     {
         BlockIndex = blockIndex;
         Hash = hash;
