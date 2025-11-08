@@ -41,7 +41,6 @@ public class BinaryPatch
                 if (segmentStart != NotDefined)
                 {
                     var dataPatchSegment = new DataPatchSegment(
-                        offset: segmentStart,
                         memory: modified.Slice(start: segmentStart, length: position - segmentStart)
                     );
                     segments.AddLast(dataPatchSegment);
@@ -56,7 +55,10 @@ public class BinaryPatch
                 if (position == modifiedSpan.Length)
                     break;
 
-                var span = modified.Span[..Math.Min(modifiedSpan.Length - position, blockSize)];
+                var span = modifiedSpan.Slice(
+                    start: position,
+                    length: Math.Min(modifiedSpan.Length - position, blockSize)
+                );
                 rollingHash = RollingHash.Create(span);
             }
             else
@@ -71,7 +73,6 @@ public class BinaryPatch
                     if (segmentStart != NotDefined)
                     {
                         var dataPatchSegment = new DataPatchSegment(
-                            offset: segmentStart,
                             memory: modified.Slice(start: segmentStart, length: position - segmentStart)
                         );
                         segments.AddLast(dataPatchSegment);
@@ -80,8 +81,8 @@ public class BinaryPatch
                     break;
                 }
 
-                var removedByte = modifiedSpan[position - blockSize];
-                var addedByte = modifiedSpan[position];
+                var removedByte = modifiedSpan[position - 1];
+                var addedByte = modifiedSpan[position + blockSize - 1];
 
                 rollingHash.Update(removed: removedByte, added: addedByte);
             }

@@ -28,7 +28,6 @@ public class BinaryPatchTests
         var binaryPatchSegment = segment as DataPatchSegment;
 
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(3));
     }
 
@@ -50,9 +49,9 @@ public class BinaryPatchTests
         var segment = patch.Segments.First();
 
         Assert.That(segment, Is.Not.Null);
-        var binaryPatchSegment = segment as EndOfFilePatchSegment;
+        var binaryPatchSegment = segment as DataPatchSegment;
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
+        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
     }
 
     [Test]
@@ -77,7 +76,6 @@ public class BinaryPatchTests
         var binaryPatchSegment = segment as DataPatchSegment;
 
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
     }
 
@@ -103,7 +101,6 @@ public class BinaryPatchTests
         var binaryPatchSegment = firstSegment as DataPatchSegment;
 
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Offset, Is.EqualTo(1));
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(2));
     }
 }
