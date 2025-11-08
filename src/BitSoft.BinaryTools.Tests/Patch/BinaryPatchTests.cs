@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Tasks;
 using BitSoft.BinaryTools.Patch;
 
 namespace BitSoft.BinaryTools.Tests.Patch;
@@ -31,14 +32,15 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
+    public async Task Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
         var modified = new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 };
 
         // Act
-        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
+        using var originalStream = new MemoryStream(original);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
         var patch = patchSource.Calculate(modified);
 
         // Assert
@@ -71,24 +73,24 @@ public class BinaryPatchTests
         using var patchedStream = new MemoryStream();
 
         BinaryPatchSource.Apply(original, patch, patchedStream);
-        
+
         var patched = patchedStream.ToArray();
-        
+
         Assert.That(patched, Is.Not.Null);
         Assert.That(patched.Length, Is.EqualTo(modified.Length));
         Assert.That(patched, Is.EqualTo(modified));
     }
 
     [Test]
-    public void Should_ReturnEndOfFilePatchSegment_When_ModifiedShorterThanOriginal()
+    public async Task Should_ReturnEndOfFilePatchSegment_When_ModifiedShorterThanOriginal()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1 };
         var modified = new byte[] { 0x0 };
 
         // Act
-        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
-
+        using var originalStream = new MemoryStream(original);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
         var patch = patchSource.Calculate(modified);
 
         // Assert
@@ -105,15 +107,15 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnBinaryPatchSegment_When_ModifiedLongerThanOriginal()
+    public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerThanOriginal()
     {
         // Arrange
         var original = new byte[] { 0x0 };
         var modified = new byte[] { 0x0, 0x1 };
 
         // Act
-        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
-
+        using var originalStream = new MemoryStream(original);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
         var patch = patchSource.Calculate(modified);
 
         // Assert
@@ -132,15 +134,15 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
+    public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x0 };
         var modified = new byte[] { 0x0, 0x1, 0x0 };
 
         // Act
-        var patchSource = BinaryPatchSource.Create(original);
-
+        using var originalStream = new MemoryStream(original);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
         var patch = patchSource.Calculate(modified);
 
         // Assert

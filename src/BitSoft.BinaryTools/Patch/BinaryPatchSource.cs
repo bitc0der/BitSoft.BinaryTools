@@ -1,6 +1,9 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch;
 
@@ -9,16 +12,19 @@ public sealed class BinaryPatchSource
     private readonly BlockInfoContainer _blockInfoContainer;
     private readonly int _blockSize;
 
+    private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
+
     private BinaryPatchSource(BlockInfoContainer blockInfoContainer, int blockSize)
     {
         _blockInfoContainer = blockInfoContainer ?? throw new ArgumentNullException(nameof(blockInfoContainer));
         _blockSize = blockSize;
     }
 
-    public static BinaryPatchSource Create(ReadOnlyMemory<byte> original, int blockSize = 4 * 1024)
+    public static async ValueTask<BinaryPatchSource> CreateAsync(Stream original, int blockSize = 4 * 1024)
     {
-        var hashes = CalculateHashes(original, blockSize);
-        return new BinaryPatchSource(hashes, blockSize);
+        ArgumentNullException.ThrowIfNull(original);
+        var blockInfoContainer = await CalculateHashesAsync(original, blockSize);
+        return new BinaryPatchSource(blockInfoContainer, blockSize);
     }
 
     public BinaryPatch Calculate(ReadOnlyMemory<byte> modified)
@@ -123,30 +129,39 @@ public sealed class BinaryPatchSource
         }
     }
 
-    private static BlockInfoContainer CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
+    private static async ValueTask<BlockInfoContainer> CalculateHashesAsync(
+        Stream source,
+        int blockSize,
+        CancellationToken cancellationToken = default)
     {
-        var blockInfoContainer = new BlockInfoContainer(length: original.Length, blockSize: blockSize);
+        ArgumentNullException.ThrowIfNull(source);
+
+        var blockInfoContainer = new BlockInfoContainer();
 
         var blockIndex = 0;
 
-        while (true)
+        var buffer = Pool.Rent(blockSize);
+        try
         {
-            var offset = blockIndex * blockSize;
-            var left = original.Length - offset;
-            if (left == 0)
-                break;
-            var length = Math.Min(left, blockSize);
+            while (true)
+            {
+                var length = await source.ReadAsync(buffer, offset: 0, count: blockSize, cancellationToken);
+                if (length == 0)
+                    break;
 
-            var slice = original.Slice(start: offset, length: length);
+                var hash = RollingHash.Create(buffer);
 
-            var hash = RollingHash.Create(slice.Span);
+                blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
 
-            blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
+                if (length < blockSize)
+                    break;
 
-            if (length < blockSize)
-                break;
-
-            blockIndex += 1;
+                blockIndex += 1;
+            }
+        }
+        finally
+        {
+            Pool.Return(buffer);
         }
 
         return blockInfoContainer;
