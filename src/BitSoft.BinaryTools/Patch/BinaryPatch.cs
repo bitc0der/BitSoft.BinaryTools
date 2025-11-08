@@ -1,78 +1,112 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 
 namespace BitSoft.BinaryTools.Patch;
 
-public class BinaryPatch
+public sealed class BinaryPatch
 {
-    private readonly LinkedList<IBinaryPatchSegment> _segments;
+    public int BlockSize { get; }
 
-    public IReadOnlyCollection<IBinaryPatchSegment> Segments => _segments;
+    public IReadOnlyList<IBinaryPatchSegment> Segments { get; }
 
-    private BinaryPatch(LinkedList<IBinaryPatchSegment> segments)
+    public static Encoding DefaultEncoding => Encoding.UTF8;
+
+    public BinaryPatch(IReadOnlyList<IBinaryPatchSegment> segments, int blockSize)
     {
-        _segments = segments ?? throw new ArgumentNullException(nameof(segments));
+        Segments = segments ?? throw new ArgumentNullException(nameof(segments));
+        BlockSize = blockSize;
     }
 
-    public static BinaryPatch Calculate(ReadOnlyMemory<byte> original, ReadOnlyMemory<byte> modified)
+    public void Write(Stream target, Encoding? encoding = null)
     {
-        var segments = new LinkedList<IBinaryPatchSegment>();
+        ArgumentNullException.ThrowIfNull(target);
 
-        const int NotDefined = -1;
+        encoding ??= DefaultEncoding;
 
-        var startIndex = NotDefined;
+        using var binaryWriter = new BinaryWriter(target, encoding, leaveOpen: true);
 
-        var originalSpan = original.Span;
-        var modifiedSpan = modified.Span;
+        binaryWriter.Write(ProtocolConst.ProtocolVersion);
+        binaryWriter.Write(BlockSize);
 
-        for (var i = 0; i < modified.Length; i++)
+        for (var i = 0; i < Segments.Count; i++)
         {
-            if (originalSpan.Length == i)
+            var segment = Segments[i];
+
+            var segmentType = segment switch
             {
-                if (startIndex == NotDefined)
-                {
-                    var length = modified.Length - original.Length;
-                    var memory = modified.Slice(start: i, length: length);
-                    var segment = new BinaryPatchSegment(offset: i, length: length, memory: memory);
-                    segments.AddLast(segment);
-                    break;
-                }
-                else
-                {
-                    var length = modified.Length - startIndex;
-                    var memory = modified.Slice(start: startIndex, length: length);
-                    var segment = new BinaryPatchSegment(offset: startIndex, length: length, memory: memory);
-                    segments.AddLast(segment);
-                    break;
-                }
-            }
+                CopyPatchSegment => ProtocolConst.SegmentTypes.CopyPatchSegment,
+                DataPatchSegment => ProtocolConst.SegmentTypes.DataPatchSegment,
+                _ => throw new InvalidOperationException($"Invalid segment type '{segment.GetType()}'.")
+            };
+            binaryWriter.Write(segmentType);
 
-            var left = originalSpan[i];
-            var right = modifiedSpan[i];
-
-            if (left == right)
+            switch (segment)
             {
-                if (startIndex != NotDefined)
-                {
-                    var length = i - startIndex;
-                    var memory = modified.Slice(start: startIndex, length: length);
-                    var segment = new BinaryPatchSegment(offset: startIndex, length: length, memory: memory);
-                    segments.AddLast(segment);
-                    startIndex = NotDefined;
-                }
-
-                continue;
+                case CopyPatchSegment copyPatchSegment:
+                    binaryWriter.Write(copyPatchSegment.BlockIndex);
+                    binaryWriter.Write(copyPatchSegment.Length);
+                    break;
+                case DataPatchSegment dataPatchSegment:
+                    binaryWriter.Write(dataPatchSegment.Memory.Length);
+                    binaryWriter.Write(dataPatchSegment.Memory.Span);
+                    break;
             }
-
-            if (startIndex == NotDefined)
-                startIndex = i;
         }
 
-        if (modified.Length < original.Length)
+        binaryWriter.Write(ProtocolConst.SegmentTypes.EndPatchSegment);
+    }
+
+    public static BinaryPatch Read(Stream source, Encoding? encoding = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        encoding ??= DefaultEncoding;
+
+        using var binaryReader = new BinaryReader(source, encoding, leaveOpen: true);
+
+        var protocolVersion = binaryReader.ReadInt32();
+        if (protocolVersion > ProtocolConst.ProtocolVersion)
+            throw new InvalidOperationException($"Invalid protocol version '{protocolVersion}'.");
+
+        var blockSize = binaryReader.ReadInt32();
+
+        var segments = new List<IBinaryPatchSegment>();
+
+        while (true)
         {
-            segments.AddLast(new EndOfFilePatchSegment(offset: modified.Length));
+            var segmentType = binaryReader.ReadByte();
+            IBinaryPatchSegment? segment = null;
+            switch (segmentType)
+            {
+                case ProtocolConst.SegmentTypes.CopyPatchSegment:
+                {
+                    var blockIndex = binaryReader.ReadInt32();
+                    var length = binaryReader.ReadInt32();
+                    segment = new CopyPatchSegment(blockIndex: blockIndex, length: length);
+                    break;
+                }
+                case ProtocolConst.SegmentTypes.DataPatchSegment:
+                {
+                    var length = binaryReader.ReadInt32();
+                    var bytes = binaryReader.ReadBytes(length);
+                    segment = new DataPatchSegment(bytes);
+                    break;
+                }
+                case ProtocolConst.SegmentTypes.EndPatchSegment:
+                    // do nothing
+                    break;
+                default:
+                    throw new InvalidOperationException($"Invalid segment type Id '{segmentType}'.");
+            }
+
+            if (segment is not null)
+                segments.Add(segment);
+            else
+                break;
         }
 
-        return new BinaryPatch(segments);
+        return new BinaryPatch(segments, blockSize);
     }
 }
