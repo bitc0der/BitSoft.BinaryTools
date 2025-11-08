@@ -27,8 +27,8 @@ public sealed class BinaryPatch
             var segment = Segments[i];
             byte segmentType = segment switch
             {
-                CopyPatchSegment => 0x1,
-                DataPatchSegment => 0x2,
+                CopyPatchSegment => SegmentTypes.CopyPatchSegment,
+                DataPatchSegment => SegmentTypes.DataPatchSegment,
                 _ => throw new InvalidOperationException($"Invalid segment type '{segment.GetType()}'.")
             };
             binaryWriter.Write(segmentType);
@@ -46,11 +46,48 @@ public sealed class BinaryPatch
         }
     }
 
-    public void Read(Stream source)
+    public static BinaryPatch Read(Stream source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
         using var binaryReader = new BinaryReader(source);
         var blockSize = binaryReader.ReadInt32();
+
+        var segments = new List<IBinaryPatchSegment>();
+
+        while (source.CanRead)
+        {
+            var segmentType = binaryReader.ReadByte();
+            IBinaryPatchSegment segment;
+            switch (segmentType)
+            {
+                case SegmentTypes.CopyPatchSegment:
+                {
+                    var blockIndex = binaryReader.ReadInt32();
+                    var length = binaryReader.ReadInt32();
+                    segment = new CopyPatchSegment(blockIndex: blockIndex, length: length);
+                    break;
+                }
+                case SegmentTypes.DataPatchSegment:
+                {
+                    var length = binaryReader.ReadInt32();
+                    var bytes = binaryReader.ReadBytes(length);
+                    segment = new DataPatchSegment(bytes);
+                    break;
+                }
+                default:
+                    throw new InvalidOperationException($"Invalid segment type Id '{segmentType}'.");
+            }
+
+            segments.Add(segment);
+        }
+
+        return new BinaryPatch(segments, blockSize);
+    }
+
+    private static class SegmentTypes
+    {
+        public const byte CopyPatchSegment = 0x1;
+        public const byte DataPatchSegment = 0x2;
     }
 }
