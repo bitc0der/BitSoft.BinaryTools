@@ -15,6 +15,8 @@ public sealed class BinaryPatch
 
     public BinaryPatch(IReadOnlyList<IBinaryPatchSegment> segments, int blockSize)
     {
+        if (blockSize <= 0) throw new ArgumentOutOfRangeException(nameof(blockSize));
+
         Segments = segments ?? throw new ArgumentNullException(nameof(segments));
         BlockSize = blockSize;
     }
@@ -22,6 +24,9 @@ public sealed class BinaryPatch
     public void Write(Stream target, Encoding? encoding = null)
     {
         ArgumentNullException.ThrowIfNull(target);
+
+        if (!target.CanWrite)
+            throw new ArgumentException("The target stream must be writable.", nameof(target));
 
         encoding ??= DefaultEncoding;
 
@@ -61,6 +66,9 @@ public sealed class BinaryPatch
     public static BinaryPatch Read(Stream source, Encoding? encoding = null)
     {
         ArgumentNullException.ThrowIfNull(source);
+
+        if (!source.CanRead)
+            throw new ArgumentException("The source stream must be readable.", nameof(source));
 
         encoding ??= DefaultEncoding;
 
