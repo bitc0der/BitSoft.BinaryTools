@@ -38,10 +38,13 @@ public class BinaryPatchTests
         var original = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
         var modified = new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 };
 
-        // Act
         using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
+
+        // Act
+
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        var patch = patchSource.Calculate(modified);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -88,10 +91,12 @@ public class BinaryPatchTests
         var original = new byte[] { 0x0, 0x1 };
         var modified = new byte[] { 0x0 };
 
-        // Act
         using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
+
+        // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        var patch = patchSource.Calculate(modified);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -113,10 +118,12 @@ public class BinaryPatchTests
         var original = new byte[] { 0x0 };
         var modified = new byte[] { 0x0, 0x1 };
 
-        // Act
         using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
+
+        // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        var patch = patchSource.Calculate(modified);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -140,10 +147,12 @@ public class BinaryPatchTests
         var original = new byte[] { 0x0, 0x0 };
         var modified = new byte[] { 0x0, 0x1, 0x0 };
 
-        // Act
         using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
+
+        // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream);
-        var patch = patchSource.Calculate(modified);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
