@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace BitSoft.BinaryTools.Patch;
 
@@ -94,6 +95,31 @@ public sealed class BinaryPatchSource
         }
 
         return new BinaryPatch(segments, _blockSize);
+    }
+
+    public void Apply(ReadOnlyMemory<byte> original, BinaryPatch patch, Stream target)
+    {
+        ArgumentNullException.ThrowIfNull(patch);
+        ArgumentNullException.ThrowIfNull(target);
+
+        foreach (var segment in patch.Segments)
+        {
+            switch (segment)
+            {
+                case DataPatchSegment dataPatchSegment:
+                    target.Write(dataPatchSegment.Memory.Span);
+                    break;
+                case CopyPatchSegment copyPatchSegment:
+                    var slice = original.Slice(
+                        start: copyPatchSegment.BlockIndex * patch.BlockSize,
+                        length: copyPatchSegment.Length
+                    );
+                    target.Write(slice.Span);
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+        }
     }
 
     private static IReadOnlyDictionary<uint, List<Block>> CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
