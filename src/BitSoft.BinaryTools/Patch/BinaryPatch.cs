@@ -27,7 +27,7 @@ public sealed class BinaryPatch
 
         using var binaryWriter = new BinaryWriter(target, encoding, leaveOpen: true);
 
-        binaryWriter.Write(Const.ProtocolVersion);
+        binaryWriter.Write(ProtocolConst.ProtocolVersion);
         binaryWriter.Write(BlockSize);
 
         for (var i = 0; i < Segments.Count; i++)
@@ -36,8 +36,8 @@ public sealed class BinaryPatch
 
             var segmentType = segment switch
             {
-                CopyPatchSegment => Const.SegmentTypes.CopyPatchSegment,
-                DataPatchSegment => Const.SegmentTypes.DataPatchSegment,
+                CopyPatchSegment => ProtocolConst.SegmentTypes.CopyPatchSegment,
+                DataPatchSegment => ProtocolConst.SegmentTypes.DataPatchSegment,
                 _ => throw new InvalidOperationException($"Invalid segment type '{segment.GetType()}'.")
             };
             binaryWriter.Write(segmentType);
@@ -55,7 +55,7 @@ public sealed class BinaryPatch
             }
         }
 
-        binaryWriter.Write(Const.SegmentTypes.EndPatchSegment);
+        binaryWriter.Write(ProtocolConst.SegmentTypes.EndPatchSegment);
     }
 
     public static BinaryPatch Read(Stream source, Encoding? encoding = null)
@@ -67,7 +67,7 @@ public sealed class BinaryPatch
         using var binaryReader = new BinaryReader(source, encoding, leaveOpen: true);
 
         var protocolVersion = binaryReader.ReadInt32();
-        if (protocolVersion > Const.ProtocolVersion)
+        if (protocolVersion > ProtocolConst.ProtocolVersion)
             throw new InvalidOperationException($"Invalid protocol version '{protocolVersion}'.");
 
         var blockSize = binaryReader.ReadInt32();
@@ -80,21 +80,21 @@ public sealed class BinaryPatch
             IBinaryPatchSegment? segment = null;
             switch (segmentType)
             {
-                case Const.SegmentTypes.CopyPatchSegment:
+                case ProtocolConst.SegmentTypes.CopyPatchSegment:
                 {
                     var blockIndex = binaryReader.ReadInt32();
                     var length = binaryReader.ReadInt32();
                     segment = new CopyPatchSegment(blockIndex: blockIndex, length: length);
                     break;
                 }
-                case Const.SegmentTypes.DataPatchSegment:
+                case ProtocolConst.SegmentTypes.DataPatchSegment:
                 {
                     var length = binaryReader.ReadInt32();
                     var bytes = binaryReader.ReadBytes(length);
                     segment = new DataPatchSegment(bytes);
                     break;
                 }
-                case Const.SegmentTypes.EndPatchSegment:
+                case ProtocolConst.SegmentTypes.EndPatchSegment:
                     // do nothing
                     break;
                 default:

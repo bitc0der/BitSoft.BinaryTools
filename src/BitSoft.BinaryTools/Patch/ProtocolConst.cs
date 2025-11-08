@@ -1,6 +1,6 @@
 namespace BitSoft.BinaryTools.Patch;
 
-public static class Const
+public static class ProtocolConst
 {
     public const int ProtocolVersion = 1;
     
