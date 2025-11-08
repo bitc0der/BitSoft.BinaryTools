@@ -5,11 +5,11 @@ namespace BitSoft.BinaryTools.Patch;
 
 public class BinaryPatch
 {
-    private readonly LinkedList<IBinaryPatchSegment> _segments;
+    private readonly List<IBinaryPatchSegment> _segments;
 
-    public IReadOnlyCollection<IBinaryPatchSegment> Segments => _segments;
+    public IReadOnlyList<IBinaryPatchSegment> Segments => _segments;
 
-    private BinaryPatch(LinkedList<IBinaryPatchSegment> segments)
+    private BinaryPatch(List<IBinaryPatchSegment> segments)
     {
         _segments = segments ?? throw new ArgumentNullException(nameof(segments));
     }
@@ -21,7 +21,8 @@ public class BinaryPatch
     {
         var hashes = CalculateHashes(original, blockSize);
 
-        var segments = new LinkedList<IBinaryPatchSegment>();
+        var maxSize = modified.Length / blockSize;
+        var segments = new List<IBinaryPatchSegment>(capacity: maxSize);
 
         var modifiedSpan = modified.Span;
         var initialSpan = modified.Span[..Math.Min(modifiedSpan.Length, blockSize)];
@@ -43,13 +44,13 @@ public class BinaryPatch
                     var dataPatchSegment = new DataPatchSegment(
                         memory: modified.Slice(start: segmentStart, length: position - segmentStart)
                     );
-                    segments.AddLast(dataPatchSegment);
+                    segments.Add(dataPatchSegment);
                     segmentStart = NotDefined;
                 }
 
                 var block = blocks[0];
                 var copyPatchSegment = new CopyPatchSegment(blockIndex: block.BlockIndex, length: block.Length);
-                segments.AddLast(copyPatchSegment);
+                segments.Add(copyPatchSegment);
                 position += block.Length;
 
                 if (position == modifiedSpan.Length)
@@ -75,7 +76,7 @@ public class BinaryPatch
                         var dataPatchSegment = new DataPatchSegment(
                             memory: modified.Slice(start: segmentStart, length: position - segmentStart)
                         );
-                        segments.AddLast(dataPatchSegment);
+                        segments.Add(dataPatchSegment);
                     }
 
                     break;

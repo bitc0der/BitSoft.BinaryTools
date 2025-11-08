@@ -1,4 +1,3 @@
-using System.Linq;
 using BitSoft.BinaryTools.Patch;
 
 namespace BitSoft.BinaryTools.Tests.Patch;
@@ -19,16 +18,29 @@ public class BinaryPatchTests
         // Assert
         Assert.That(patch, Is.Not.Null);
         Assert.That(patch.Segments, Is.Not.Empty);
-        Assert.That(patch.Segments.Count, Is.EqualTo(1));
+        Assert.That(patch.Segments.Count, Is.EqualTo(3));
 
-        var segment = patch.Segments.First();
+        var segment = patch.Segments[0];
 
         Assert.That(segment, Is.Not.Null);
-
         var binaryPatchSegment = segment as DataPatchSegment;
-
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(3));
+        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
+        
+        segment = patch.Segments[1];
+
+        Assert.That(segment, Is.Not.Null);
+        var copyPatchSegment = segment as CopyPatchSegment;
+        Assert.That(copyPatchSegment, Is.Not.Null);
+        Assert.That(copyPatchSegment.BlockIndex, Is.EqualTo(0));
+        Assert.That(copyPatchSegment.Length, Is.EqualTo(2));
+
+        segment = patch.Segments[2];
+
+        Assert.That(segment, Is.Not.Null);
+        binaryPatchSegment = segment as DataPatchSegment;
+        Assert.That(binaryPatchSegment, Is.Not.Null);
+        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(2));
     }
 
     [Test]
@@ -46,7 +58,7 @@ public class BinaryPatchTests
         Assert.That(patch.Segments, Is.Not.Empty);
         Assert.That(patch.Segments.Count, Is.EqualTo(1));
 
-        var segment = patch.Segments.First();
+        var segment = patch.Segments[0];
 
         Assert.That(segment, Is.Not.Null);
         var binaryPatchSegment = segment as DataPatchSegment;
@@ -69,14 +81,14 @@ public class BinaryPatchTests
         Assert.That(patch.Segments, Is.Not.Empty);
         Assert.That(patch.Segments.Count, Is.EqualTo(1));
 
-        var segment = patch.Segments.First();
+        var firstSegment = patch.Segments[0];
 
-        Assert.That(segment, Is.Not.Null);
+        Assert.That(firstSegment, Is.Not.Null);
 
-        var binaryPatchSegment = segment as DataPatchSegment;
+        var binaryPatchSegment = firstSegment as DataPatchSegment;
 
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
+        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(2));
     }
 
     [Test]
@@ -94,13 +106,13 @@ public class BinaryPatchTests
         Assert.That(patch.Segments, Is.Not.Empty);
         Assert.That(patch.Segments.Count, Is.EqualTo(1));
 
-        var firstSegment = patch.Segments.First();
+        var firstSegment = patch.Segments[0];
 
         Assert.That(firstSegment, Is.Not.Null);
 
         var binaryPatchSegment = firstSegment as DataPatchSegment;
 
         Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(2));
+        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(3));
     }
 }
