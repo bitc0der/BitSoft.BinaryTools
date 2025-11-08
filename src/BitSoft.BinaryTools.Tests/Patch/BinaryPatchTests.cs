@@ -1,3 +1,4 @@
+using System.IO;
 using BitSoft.BinaryTools.Patch;
 
 namespace BitSoft.BinaryTools.Tests.Patch;
@@ -5,6 +6,30 @@ namespace BitSoft.BinaryTools.Tests.Patch;
 [TestFixture]
 public class BinaryPatchTests
 {
+    [Test]
+    public void Should_DeserializePatch_FromStream()
+    {
+        // Arrange
+        var data = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
+        var sourcePatch = new BinaryPatch(segments:
+        [
+            new CopyPatchSegment(blockIndex: 5, length: 34),
+            new DataPatchSegment(memory: data)
+        ], blockSize: 1024);
+
+        // Act
+        using var patchStream = new MemoryStream();
+        sourcePatch.Write(patchStream);
+        patchStream.Position = 0;
+        var restoredPatch = BinaryPatch.Read(patchStream);
+
+        // Assert
+        Assert.That(restoredPatch, Is.Not.Null);
+        Assert.That(restoredPatch.BlockSize, Is.EqualTo(sourcePatch.BlockSize));
+        Assert.That(restoredPatch.Segments, Is.Not.Empty);
+        Assert.That(restoredPatch.Segments.Count, Is.EqualTo(sourcePatch.Segments.Count));
+    }
+
     [Test]
     public void Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
     {
@@ -14,7 +39,6 @@ public class BinaryPatchTests
 
         // Act
         var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
-
         var patch = patchSource.Calculate(modified);
 
         // Assert
