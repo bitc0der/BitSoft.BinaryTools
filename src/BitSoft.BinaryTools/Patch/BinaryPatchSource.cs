@@ -6,12 +6,12 @@ namespace BitSoft.BinaryTools.Patch;
 
 public sealed class BinaryPatchSource
 {
-    private readonly IReadOnlyDictionary<uint, List<PatchBlockInfo>> _hashes;
+    private readonly BlockInfoContainer _blockInfoContainer;
     private readonly int _blockSize;
 
-    private BinaryPatchSource(IReadOnlyDictionary<uint, List<PatchBlockInfo>> hashes, int blockSize)
+    private BinaryPatchSource(BlockInfoContainer blockInfoContainer, int blockSize)
     {
-        _hashes = hashes ?? throw new ArgumentNullException(nameof(hashes));
+        _blockInfoContainer = blockInfoContainer ?? throw new ArgumentNullException(nameof(blockInfoContainer));
         _blockSize = blockSize;
     }
 
@@ -39,7 +39,9 @@ public sealed class BinaryPatchSource
         {
             var checksum = rollingHash.GetChecksum();
 
-            if (_hashes.TryGetValue(checksum, out var blocks))
+            var block = _blockInfoContainer.Match(rollingHash);
+
+            if (block is not null)
             {
                 if (segmentStart != NotDefined)
                 {
@@ -50,7 +52,6 @@ public sealed class BinaryPatchSource
                     segmentStart = NotDefined;
                 }
 
-                var block = blocks[0];
                 var copyPatchSegment = new CopyPatchSegment(blockIndex: block.BlockIndex, length: block.Length);
                 segments.Add(copyPatchSegment);
                 position += block.Length;
@@ -122,9 +123,9 @@ public sealed class BinaryPatchSource
         }
     }
 
-    private static IReadOnlyDictionary<uint, List<PatchBlockInfo>> CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
+    private static BlockInfoContainer CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
     {
-        var hashes = new Dictionary<uint, List<PatchBlockInfo>>();
+        var blockInfoContainer = new BlockInfoContainer(length: original.Length, blockSize: blockSize);
 
         var blockIndex = 0;
 
@@ -139,15 +140,8 @@ public sealed class BinaryPatchSource
             var slice = original.Slice(start: offset, length: length);
 
             var hash = RollingHash.Create(slice.Span);
-            var checksum = hash.GetChecksum();
-            var block = new PatchBlockInfo(blockIndex, checksum, length);
 
-            if (!hashes.TryGetValue(checksum, out var blocks))
-            {
-                hashes[checksum] = blocks = [];
-            }
-
-            blocks.Add(block);
+            blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
 
             if (length < blockSize)
                 break;
@@ -155,6 +149,6 @@ public sealed class BinaryPatchSource
             blockIndex += 1;
         }
 
-        return hashes;
+        return blockInfoContainer;
     }
 }
