@@ -82,7 +82,10 @@ public class BinaryPatch
                 }
 
                 var removedByte = modifiedSpan[position - 1];
-                var addedByte = modifiedSpan[position + blockSize - 1];
+                var addedByte =
+                    position + blockSize <= modifiedSpan.Length
+                        ? modifiedSpan[position + blockSize - 1]
+                        : modifiedSpan[modifiedSpan.Length - 1];
 
                 rollingHash.Update(removed: removedByte, added: addedByte);
             }
