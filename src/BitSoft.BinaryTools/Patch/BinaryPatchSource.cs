@@ -97,7 +97,7 @@ public sealed class BinaryPatchSource
         return new BinaryPatch(segments, _blockSize);
     }
 
-    public void Apply(ReadOnlyMemory<byte> original, BinaryPatch patch, Stream target)
+    public static void Apply(ReadOnlyMemory<byte> original, BinaryPatch patch, Stream target)
     {
         ArgumentNullException.ThrowIfNull(patch);
         ArgumentNullException.ThrowIfNull(target);

@@ -67,6 +67,16 @@ public class BinaryPatchTests
         binaryPatchSegment = segment as DataPatchSegment;
         Assert.That(binaryPatchSegment, Is.Not.Null);
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(2));
+
+        using var patchedStream = new MemoryStream();
+
+        BinaryPatchSource.Apply(original, patch, patchedStream);
+        
+        var patched = patchedStream.ToArray();
+        
+        Assert.That(patched, Is.Not.Null);
+        Assert.That(patched.Length, Is.EqualTo(modified.Length));
+        Assert.That(patched, Is.EqualTo(modified));
     }
 
     [Test]
