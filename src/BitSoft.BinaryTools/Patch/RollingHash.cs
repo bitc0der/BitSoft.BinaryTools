@@ -1,6 +1,6 @@
 using System;
 
-namespace BitSoft.BinaryTools.Patch.Stream;
+namespace BitSoft.BinaryTools.Patch;
 
 public struct RollingHash
 {
@@ -11,7 +11,7 @@ public struct RollingHash
     private uint _sumOfWindow;
     private readonly uint _length;
 
-    public RollingHash(uint a, uint b, uint sumOfWindow, uint length)
+    private RollingHash(uint a, uint b, uint sumOfWindow, uint length)
     {
         _a = a;
         _b = b;

@@ -14,65 +14,131 @@ public class BinaryPatch
         _segments = segments ?? throw new ArgumentNullException(nameof(segments));
     }
 
-    public static BinaryPatch Calculate(ReadOnlyMemory<byte> original, ReadOnlyMemory<byte> modified)
+    public static BinaryPatch Calculate(
+        ReadOnlyMemory<byte> original,
+        ReadOnlyMemory<byte> modified,
+        int blockSize = 1024)
     {
+        var hashes = CalculateHashes(original, blockSize);
+
         var segments = new LinkedList<IBinaryPatchSegment>();
+
+        var modifiedSpan = modified.Span;
+        var initialSpan = modified.Span[..Math.Min(modifiedSpan.Length, blockSize)];
+        var rollingHash = RollingHash.Create(initialSpan);
 
         const int NotDefined = -1;
 
-        var startIndex = NotDefined;
+        var segmentStart = NotDefined;
+        var position = 0;
 
-        var originalSpan = original.Span;
-        var modifiedSpan = modified.Span;
-
-        for (var i = 0; i < modified.Length; i++)
+        while (position < modifiedSpan.Length)
         {
-            if (originalSpan.Length == i)
+            var checksum = rollingHash.GetChecksum();
+
+            if (hashes.TryGetValue(checksum, out var blocks))
             {
-                if (startIndex == NotDefined)
+                if (segmentStart != NotDefined)
                 {
-                    var length = modified.Length - original.Length;
-                    var memory = modified.Slice(start: i, length: length);
-                    var segment = new BinaryPatchSegment(offset: i, length: length, memory: memory);
-                    segments.AddLast(segment);
+                    var dataPatchSegment = new DataPatchSegment(
+                        offset: segmentStart,
+                        memory: modified.Slice(start: segmentStart, length: position - segmentStart)
+                    );
+                    segments.AddLast(dataPatchSegment);
+                    segmentStart = NotDefined;
+                }
+
+                var block = blocks[0];
+                var copyPatchSegment = new CopyPatchSegment(blockIndex: block.BlockIndex, length: block.Length);
+                segments.AddLast(copyPatchSegment);
+                position += block.Length;
+
+                if (position == modifiedSpan.Length)
+                    break;
+
+                var span = modified.Span[..Math.Min(modifiedSpan.Length - position, blockSize)];
+                rollingHash = RollingHash.Create(span);
+            }
+            else
+            {
+                if (segmentStart == NotDefined)
+                    segmentStart = position;
+
+                position += 1;
+
+                if (position == modifiedSpan.Length)
+                {
+                    if (segmentStart != NotDefined)
+                    {
+                        var dataPatchSegment = new DataPatchSegment(
+                            offset: segmentStart,
+                            memory: modified.Slice(start: segmentStart, length: position - segmentStart)
+                        );
+                        segments.AddLast(dataPatchSegment);
+                    }
+
                     break;
                 }
-                else
-                {
-                    var length = modified.Length - startIndex;
-                    var memory = modified.Slice(start: startIndex, length: length);
-                    var segment = new BinaryPatchSegment(offset: startIndex, length: length, memory: memory);
-                    segments.AddLast(segment);
-                    break;
-                }
+
+                var removedByte = modifiedSpan[position - blockSize];
+                var addedByte = modifiedSpan[position];
+
+                rollingHash.Update(removed: removedByte, added: addedByte);
             }
-
-            var left = originalSpan[i];
-            var right = modifiedSpan[i];
-
-            if (left == right)
-            {
-                if (startIndex != NotDefined)
-                {
-                    var length = i - startIndex;
-                    var memory = modified.Slice(start: startIndex, length: length);
-                    var segment = new BinaryPatchSegment(offset: startIndex, length: length, memory: memory);
-                    segments.AddLast(segment);
-                    startIndex = NotDefined;
-                }
-
-                continue;
-            }
-
-            if (startIndex == NotDefined)
-                startIndex = i;
-        }
-
-        if (modified.Length < original.Length)
-        {
-            segments.AddLast(new EndOfFilePatchSegment(offset: modified.Length));
         }
 
         return new BinaryPatch(segments);
+    }
+
+    private static IReadOnlyDictionary<uint, List<Block>> CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
+    {
+        var hashes = new Dictionary<uint, List<Block>>();
+
+        var blockIndex = 0;
+
+        while (true)
+        {
+            var offset = blockIndex * blockSize;
+            var left = original.Length - offset;
+            if (left == 0)
+                break;
+            var length = Math.Min(left, blockSize);
+
+            var slice = original.Slice(start: offset, length: length);
+
+            var hash = RollingHash.Create(slice.Span);
+            var checksum = hash.GetChecksum();
+            var block = new Block(blockIndex, checksum, length);
+
+            if (!hashes.TryGetValue(checksum, out var blocks))
+            {
+                hashes[checksum] = blocks = [];
+            }
+
+            blocks.Add(block);
+
+            if (length < blockSize)
+                break;
+
+            blockIndex += 1;
+        }
+
+        return hashes;
+    }
+
+    private sealed class Block
+    {
+        public Block(int blockIndex, uint hash, int length)
+        {
+            BlockIndex = blockIndex;
+            Hash = hash;
+            Length = length;
+        }
+
+        public int BlockIndex { get; }
+
+        public uint Hash { get; }
+
+        public int Length { get; }
     }
 }
