@@ -93,7 +93,7 @@ public sealed class BinaryPatchSource
             }
         }
 
-        return new BinaryPatch(segments);
+        return new BinaryPatch(segments, _blockSize);
     }
 
     private static IReadOnlyDictionary<uint, List<Block>> CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
