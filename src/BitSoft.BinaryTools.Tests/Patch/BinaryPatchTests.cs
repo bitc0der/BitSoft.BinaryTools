@@ -142,7 +142,7 @@ public class BinaryPatchTests
 
         // Act
         using var originalStream = new MemoryStream(original);
-        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream);
         var patch = patchSource.Calculate(modified);
 
         // Assert

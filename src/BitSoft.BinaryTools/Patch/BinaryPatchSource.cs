@@ -43,8 +43,6 @@ public sealed class BinaryPatchSource
 
         while (position < modifiedSpan.Length)
         {
-            var checksum = rollingHash.GetChecksum();
-
             var block = _blockInfoContainer.Match(rollingHash);
 
             if (block is not null)
@@ -136,6 +134,9 @@ public sealed class BinaryPatchSource
     {
         ArgumentNullException.ThrowIfNull(source);
 
+        if (!source.CanRead)
+            throw new ArgumentException("source stream must be readable.", nameof(source));
+
         var blockInfoContainer = new BlockInfoContainer();
 
         var blockIndex = 0;
@@ -145,11 +146,11 @@ public sealed class BinaryPatchSource
         {
             while (true)
             {
-                var length = await source.ReadAsync(buffer, offset: 0, count: blockSize, cancellationToken);
+                var length = await source.ReadAsync(buffer.AsMemory(start: 0, length: blockSize), cancellationToken);
                 if (length == 0)
                     break;
 
-                var hash = RollingHash.Create(buffer);
+                var hash = RollingHash.Create(buffer.AsSpan(start: 0, length: length));
 
                 blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
 
