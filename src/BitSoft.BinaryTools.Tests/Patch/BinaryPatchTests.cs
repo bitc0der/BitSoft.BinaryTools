@@ -13,7 +13,9 @@ public class BinaryPatchTests
         var modified = new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 };
 
         // Act
-        var patch = BinaryPatch.Calculate(original, modified, blockSize: 2);
+        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
+
+        var patch = patchSource.Calculate(modified);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -26,7 +28,7 @@ public class BinaryPatchTests
         var binaryPatchSegment = segment as DataPatchSegment;
         Assert.That(binaryPatchSegment, Is.Not.Null);
         Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(1));
-        
+
         segment = patch.Segments[1];
 
         Assert.That(segment, Is.Not.Null);
@@ -51,7 +53,9 @@ public class BinaryPatchTests
         var modified = new byte[] { 0x0 };
 
         // Act
-        var patch = BinaryPatch.Calculate(original, modified);
+        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
+
+        var patch = patchSource.Calculate(modified);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -74,7 +78,9 @@ public class BinaryPatchTests
         var modified = new byte[] { 0x0, 0x1 };
 
         // Act
-        var patch = BinaryPatch.Calculate(original, modified);
+        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
+
+        var patch = patchSource.Calculate(modified);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -99,7 +105,9 @@ public class BinaryPatchTests
         var modified = new byte[] { 0x0, 0x1, 0x0 };
 
         // Act
-        var patch = BinaryPatch.Calculate(original, modified);
+        var patchSource = BinaryPatchSource.Create(original);
+
+        var patch = patchSource.Calculate(modified);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
