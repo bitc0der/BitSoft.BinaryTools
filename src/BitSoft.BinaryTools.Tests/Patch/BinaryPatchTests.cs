@@ -116,7 +116,7 @@ public class BinaryPatchTests
     {
         // Arrange
         var original = new byte[] { 0x0 };
-        var modified = new byte[] { 0x0, 0x1 };
+        var modified = new byte[] { 0x1, 0x2 };
 
         using var originalStream = new MemoryStream(original);
         using var modifiedStream = new MemoryStream(modified);
@@ -144,28 +144,37 @@ public class BinaryPatchTests
     public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
     {
         // Arrange
-        var original = new byte[] { 0x0, 0x0 };
-        var modified = new byte[] { 0x0, 0x1, 0x0 };
+        var original = new byte[] { 0x1, 0x2 };
+        var modified = new byte[] { 0x3, 0x4, 0x5 };
 
         using var originalStream = new MemoryStream(original);
         using var modifiedStream = new MemoryStream(modified);
 
         // Act
-        var patchSource = await BinaryPatchSource.CreateAsync(originalStream);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
         var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
         Assert.That(patch.Segments, Is.Not.Empty);
-        Assert.That(patch.Segments.Count, Is.EqualTo(1));
+        Assert.That(patch.Segments.Count, Is.EqualTo(2));
 
-        var firstSegment = patch.Segments[0];
+        var segment = patch.Segments[0];
 
-        Assert.That(firstSegment, Is.Not.Null);
+        Assert.That(segment, Is.Not.Null);
 
-        var binaryPatchSegment = firstSegment as DataPatchSegment;
+        var dataPatchSegment = segment as DataPatchSegment;
 
-        Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(3));
+        Assert.That(dataPatchSegment, Is.Not.Null);
+        Assert.That(dataPatchSegment.Memory.Length, Is.EqualTo(2));
+        
+        segment = patch.Segments[1];
+
+        Assert.That(segment, Is.Not.Null);
+
+        dataPatchSegment = segment as DataPatchSegment;
+
+        Assert.That(dataPatchSegment, Is.Not.Null);
+        Assert.That(dataPatchSegment.Memory.Length, Is.EqualTo(1));
     }
 }

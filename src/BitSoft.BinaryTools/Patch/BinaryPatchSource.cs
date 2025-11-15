@@ -65,21 +65,45 @@ public sealed class BinaryPatchSource
 
                     if (block is null)
                     {
-                        if (segmentStart == NotDefined)
+                        if (length == _blockSize)
+                        {
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: position, length: _blockSize)
+                            );
+                            segments.Add(dataPatchSegment);
+                            position = 0;
+                            break;
+                        }
+                        else if (segmentStart == NotDefined)
+                        {
                             segmentStart = position;
+                        }
+                        else if (position - segmentStart + 1 == _blockSize)
+                        {
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1)
+                            );
+                            segments.Add(dataPatchSegment);
+
+                            buffer
+                                .AsSpan(start: position + 1, length: bufferLength - position - 2)
+                                .CopyTo(buffer.AsSpan(start: 0));
+
+                            segmentStart = NotDefined;
+                            resetHash = true;
+
+                            break;
+                        }
 
                         position += 1;
 
                         if (position == length)
                         {
-                            if (segmentStart != NotDefined)
-                            {
-                                var dataPatchSegment = new DataPatchSegment(
-                                    memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart)
-                                );
-                                segments.Add(dataPatchSegment);
-                            }
-
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart)
+                            );
+                            segments.Add(dataPatchSegment);
+                            position = 0;
                             break;
                         }
 
@@ -119,11 +143,11 @@ public sealed class BinaryPatchSource
                     cancellationToken: cancellationToken
                 );
 
-                if (length == 0)
-                    break;
-
                 length += position;
                 position = 0;
+
+                if (length == 0)
+                    break;
             }
         }
         finally
