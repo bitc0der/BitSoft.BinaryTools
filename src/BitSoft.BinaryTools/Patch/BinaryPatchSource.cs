@@ -1,6 +1,9 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch;
 
@@ -9,90 +12,148 @@ public sealed class BinaryPatchSource
     private readonly BlockInfoContainer _blockInfoContainer;
     private readonly int _blockSize;
 
+    private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
+
     private BinaryPatchSource(BlockInfoContainer blockInfoContainer, int blockSize)
     {
         _blockInfoContainer = blockInfoContainer ?? throw new ArgumentNullException(nameof(blockInfoContainer));
         _blockSize = blockSize;
     }
 
-    public static BinaryPatchSource Create(ReadOnlyMemory<byte> original, int blockSize = 4 * 1024)
+    public static async ValueTask<BinaryPatchSource> CreateAsync(Stream original, int blockSize = 4 * 1024)
     {
-        var hashes = CalculateHashes(original, blockSize);
-        return new BinaryPatchSource(hashes, blockSize);
+        ArgumentNullException.ThrowIfNull(original);
+        var blockInfoContainer = await CalculateHashesAsync(original, blockSize);
+        return new BinaryPatchSource(blockInfoContainer, blockSize);
     }
 
-    public BinaryPatch Calculate(ReadOnlyMemory<byte> modified)
+    public async ValueTask<BinaryPatch> CalculateAsync(Stream modified, CancellationToken cancellationToken = default)
     {
-        var maxSize = modified.Length / _blockSize;
-        var segments = new List<IBinaryPatchSegment>(capacity: maxSize);
+        ArgumentNullException.ThrowIfNull(modified);
 
-        var modifiedSpan = modified.Span;
-        var initialSpan = modified.Span[..Math.Min(modifiedSpan.Length, _blockSize)];
-        var rollingHash = RollingHash.Create(initialSpan);
+        var segments = new List<IBinaryPatchSegment>();
 
-        const int NotDefined = -1;
-
-        var segmentStart = NotDefined;
-        var position = 0;
-
-        while (position < modifiedSpan.Length)
+        var bufferLength = _blockSize * 2;
+        var buffer = Pool.Rent(minimumLength: bufferLength);
+        try
         {
-            var checksum = rollingHash.GetChecksum();
+            var length = await modified.ReadAsync(buffer.AsMemory(start: 0, length: bufferLength), cancellationToken);
+            if (length == 0)
+                return new BinaryPatch(segments: [], _blockSize);
 
-            var block = _blockInfoContainer.Match(rollingHash);
+            const int NotDefined = -1;
 
-            if (block is not null)
+            var segmentStart = NotDefined;
+            var position = 0;
+
+            RollingHash rollingHash = default;
+            var resetHash = true;
+
+            while (true)
             {
-                if (segmentStart != NotDefined)
+                while (position < length)
                 {
-                    var dataPatchSegment = new DataPatchSegment(
-                        memory: modified.Slice(start: segmentStart, length: position - segmentStart)
-                    );
-                    segments.Add(dataPatchSegment);
-                    segmentStart = NotDefined;
-                }
-
-                var copyPatchSegment = new CopyPatchSegment(blockIndex: block.BlockIndex, length: block.Length);
-                segments.Add(copyPatchSegment);
-                position += block.Length;
-
-                if (position >= modifiedSpan.Length)
-                    break;
-
-                var span = modifiedSpan.Slice(
-                    start: position,
-                    length: Math.Min(modifiedSpan.Length - position, _blockSize)
-                );
-                rollingHash = RollingHash.Create(span);
-            }
-            else
-            {
-                if (segmentStart == NotDefined)
-                    segmentStart = position;
-
-                position += 1;
-
-                if (position == modifiedSpan.Length)
-                {
-                    if (segmentStart != NotDefined)
+                    if (resetHash)
                     {
-                        var dataPatchSegment = new DataPatchSegment(
-                            memory: modified.Slice(start: segmentStart, length: position - segmentStart)
-                        );
-                        segments.Add(dataPatchSegment);
+                        var spanLength = Math.Min(_blockSize, length);
+                        var bufferSpan = buffer.AsSpan(start: 0, length: spanLength);
+                        rollingHash = RollingHash.Create(bufferSpan);
+                        resetHash = false;
                     }
 
-                    break;
+                    var block = _blockInfoContainer.Match(rollingHash);
+
+                    if (block is null)
+                    {
+                        if (length <= _blockSize)
+                        {
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: position, length: length)
+                            );
+                            segments.Add(dataPatchSegment);
+                            position = 0;
+                            break;
+                        }
+
+                        if (segmentStart == NotDefined)
+                        {
+                            segmentStart = position;
+                        }
+                        else if (position - segmentStart + 1 == _blockSize)
+                        {
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1)
+                            );
+                            segments.Add(dataPatchSegment);
+
+                            buffer
+                                .AsSpan(start: position + 1, length: bufferLength - position - 2)
+                                .CopyTo(buffer.AsSpan(start: 0));
+
+                            segmentStart = NotDefined;
+                            resetHash = true;
+
+                            break;
+                        }
+
+                        position += 1;
+
+                        if (position == length)
+                        {
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart)
+                            );
+                            segments.Add(dataPatchSegment);
+                            position = 0;
+                            break;
+                        }
+
+                        var removedByte = buffer[position - 1];
+                        var addedByte = position + _blockSize <= length
+                            ? buffer[position + _blockSize - 1]
+                            : buffer[buffer.Length - 1];
+
+                        rollingHash.Update(removed: removedByte, added: addedByte);
+                    }
+                    else
+                    {
+                        if (segmentStart != NotDefined)
+                        {
+                            var dataPatchSegment = new DataPatchSegment(
+                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart)
+                            );
+                            segments.Add(dataPatchSegment);
+                            segmentStart = NotDefined;
+                        }
+
+                        var copyPatchSegment = new CopyPatchSegment(blockIndex: block.BlockIndex, length: block.Length);
+                        segments.Add(copyPatchSegment);
+
+                        buffer
+                            .AsSpan(start: position + block.Length, length: bufferLength - position - block.Length - 1)
+                            .CopyTo(buffer.AsSpan(start: 0));
+
+                        resetHash = true;
+
+                        break;
+                    }
                 }
 
-                var removedByte = modifiedSpan[position - 1];
-                var addedByte =
-                    position + _blockSize <= modifiedSpan.Length
-                        ? modifiedSpan[position + _blockSize - 1]
-                        : modifiedSpan[modifiedSpan.Length - 1];
+                length = await modified.ReadAsync(
+                    buffer.AsMemory(start: position, length: bufferLength - position - 1),
+                    cancellationToken: cancellationToken
+                );
 
-                rollingHash.Update(removed: removedByte, added: addedByte);
+                length += position;
+                position = 0;
+
+                if (length == 0)
+                    break;
             }
+        }
+        finally
+        {
+            Pool.Return(buffer);
         }
 
         return new BinaryPatch(segments, _blockSize);
@@ -123,30 +184,42 @@ public sealed class BinaryPatchSource
         }
     }
 
-    private static BlockInfoContainer CalculateHashes(ReadOnlyMemory<byte> original, int blockSize)
+    private static async ValueTask<BlockInfoContainer> CalculateHashesAsync(
+        Stream source,
+        int blockSize,
+        CancellationToken cancellationToken = default)
     {
-        var blockInfoContainer = new BlockInfoContainer(length: original.Length, blockSize: blockSize);
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (!source.CanRead)
+            throw new ArgumentException("source stream must be readable.", nameof(source));
+
+        var blockInfoContainer = new BlockInfoContainer();
 
         var blockIndex = 0;
 
-        while (true)
+        var buffer = Pool.Rent(blockSize);
+        try
         {
-            var offset = blockIndex * blockSize;
-            var left = original.Length - offset;
-            if (left == 0)
-                break;
-            var length = Math.Min(left, blockSize);
+            while (true)
+            {
+                var length = await source.ReadAsync(buffer.AsMemory(start: 0, length: blockSize), cancellationToken);
+                if (length == 0)
+                    break;
 
-            var slice = original.Slice(start: offset, length: length);
+                var hash = RollingHash.Create(buffer.AsSpan(start: 0, length: length));
 
-            var hash = RollingHash.Create(slice.Span);
+                blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
 
-            blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
+                if (length < blockSize)
+                    break;
 
-            if (length < blockSize)
-                break;
-
-            blockIndex += 1;
+                blockIndex += 1;
+            }
+        }
+        finally
+        {
+            Pool.Return(buffer);
         }
 
         return blockInfoContainer;

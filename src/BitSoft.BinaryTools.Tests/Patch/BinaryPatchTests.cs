@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Tasks;
 using BitSoft.BinaryTools.Patch;
 
 namespace BitSoft.BinaryTools.Tests.Patch;
@@ -31,15 +32,19 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
+    public async Task Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
         var modified = new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 };
 
+        using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
+
         // Act
-        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
-        var patch = patchSource.Calculate(modified);
+
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -71,25 +76,27 @@ public class BinaryPatchTests
         using var patchedStream = new MemoryStream();
 
         BinaryPatchSource.Apply(original, patch, patchedStream);
-        
+
         var patched = patchedStream.ToArray();
-        
+
         Assert.That(patched, Is.Not.Null);
         Assert.That(patched.Length, Is.EqualTo(modified.Length));
         Assert.That(patched, Is.EqualTo(modified));
     }
 
     [Test]
-    public void Should_ReturnEndOfFilePatchSegment_When_ModifiedShorterThanOriginal()
+    public async Task Should_ReturnEndOfFilePatchSegment_When_ModifiedShorterThanOriginal()
     {
         // Arrange
         var original = new byte[] { 0x0, 0x1 };
         var modified = new byte[] { 0x0 };
 
-        // Act
-        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
+        using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
 
-        var patch = patchSource.Calculate(modified);
+        // Act
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -105,16 +112,18 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnBinaryPatchSegment_When_ModifiedLongerThanOriginal()
+    public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerThanOriginal()
     {
         // Arrange
         var original = new byte[] { 0x0 };
-        var modified = new byte[] { 0x0, 0x1 };
+        var modified = new byte[] { 0x1, 0x2 };
+
+        using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
 
         // Act
-        var patchSource = BinaryPatchSource.Create(original, blockSize: 2);
-
-        var patch = patchSource.Calculate(modified);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
@@ -132,29 +141,40 @@ public class BinaryPatchTests
     }
 
     [Test]
-    public void Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
+    public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
     {
         // Arrange
-        var original = new byte[] { 0x0, 0x0 };
-        var modified = new byte[] { 0x0, 0x1, 0x0 };
+        var original = new byte[] { 0x1, 0x2 };
+        var modified = new byte[] { 0x3, 0x4, 0x5 };
+
+        using var originalStream = new MemoryStream(original);
+        using var modifiedStream = new MemoryStream(modified);
 
         // Act
-        var patchSource = BinaryPatchSource.Create(original);
-
-        var patch = patchSource.Calculate(modified);
+        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
+        var patch = await patchSource.CalculateAsync(modifiedStream);
 
         // Assert
         Assert.That(patch, Is.Not.Null);
         Assert.That(patch.Segments, Is.Not.Empty);
-        Assert.That(patch.Segments.Count, Is.EqualTo(1));
+        Assert.That(patch.Segments.Count, Is.EqualTo(2));
 
-        var firstSegment = patch.Segments[0];
+        var segment = patch.Segments[0];
 
-        Assert.That(firstSegment, Is.Not.Null);
+        Assert.That(segment, Is.Not.Null);
 
-        var binaryPatchSegment = firstSegment as DataPatchSegment;
+        var dataPatchSegment = segment as DataPatchSegment;
 
-        Assert.That(binaryPatchSegment, Is.Not.Null);
-        Assert.That(binaryPatchSegment.Memory.Length, Is.EqualTo(3));
+        Assert.That(dataPatchSegment, Is.Not.Null);
+        Assert.That(dataPatchSegment.Memory.Length, Is.EqualTo(2));
+        
+        segment = patch.Segments[1];
+
+        Assert.That(segment, Is.Not.Null);
+
+        dataPatchSegment = segment as DataPatchSegment;
+
+        Assert.That(dataPatchSegment, Is.Not.Null);
+        Assert.That(dataPatchSegment.Memory.Length, Is.EqualTo(1));
     }
 }
