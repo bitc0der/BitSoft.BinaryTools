@@ -65,16 +65,17 @@ public sealed class BinaryPatchSource
 
                     if (block is null)
                     {
-                        if (length == _blockSize)
+                        if (length <= _blockSize)
                         {
                             var dataPatchSegment = new DataPatchSegment(
-                                memory: buffer.AsMemory(start: position, length: _blockSize)
+                                memory: buffer.AsMemory(start: position, length: length)
                             );
                             segments.Add(dataPatchSegment);
                             position = 0;
                             break;
                         }
-                        else if (segmentStart == NotDefined)
+
+                        if (segmentStart == NotDefined)
                         {
                             segmentStart = position;
                         }
