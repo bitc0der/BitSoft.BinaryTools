@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,11 +26,14 @@ public sealed class BinaryPatchSource
         return new BinaryPatchSource(blockInfoContainer, blockSize);
     }
 
-    public async ValueTask<BinaryPatch> CalculateAsync(Stream modified, CancellationToken cancellationToken = default)
+    public async ValueTask CalculateAsync(Stream modified, Stream output, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(modified);
+        ArgumentNullException.ThrowIfNull(output);
 
-        var segments = new List<IBinaryPatchSegment>();
+        using var writer = new PatchWriter(output);
+
+        await writer.WriteHeaderAsync(blockSize: _blockSize, cancellationToken);
 
         var bufferLength = _blockSize * 2;
         var buffer = Pool.Rent(minimumLength: bufferLength);
@@ -39,7 +41,7 @@ public sealed class BinaryPatchSource
         {
             var length = await modified.ReadAsync(buffer.AsMemory(start: 0, length: bufferLength), cancellationToken);
             if (length == 0)
-                return new BinaryPatch(segments: [], _blockSize);
+                return;
 
             const int NotDefined = -1;
 
@@ -67,10 +69,8 @@ public sealed class BinaryPatchSource
                     {
                         if (length <= _blockSize)
                         {
-                            var dataPatchSegment = new DataPatchSegment(
-                                memory: buffer.AsMemory(start: position, length: length)
-                            );
-                            segments.Add(dataPatchSegment);
+                            var memory = buffer.AsMemory(start: position, length: length);
+                            await writer.WriteDataAsync(memory, cancellationToken);
                             position = 0;
                             break;
                         }
@@ -81,10 +81,8 @@ public sealed class BinaryPatchSource
                         }
                         else if (position - segmentStart + 1 == _blockSize)
                         {
-                            var dataPatchSegment = new DataPatchSegment(
-                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1)
-                            );
-                            segments.Add(dataPatchSegment);
+                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1);
+                            await writer.WriteDataAsync(memory, cancellationToken);
 
                             buffer
                                 .AsSpan(start: position + 1, length: bufferLength - position - 2)
@@ -100,10 +98,8 @@ public sealed class BinaryPatchSource
 
                         if (position == length)
                         {
-                            var dataPatchSegment = new DataPatchSegment(
-                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart)
-                            );
-                            segments.Add(dataPatchSegment);
+                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart);
+                            await writer.WriteDataAsync(memory, cancellationToken);
                             position = 0;
                             break;
                         }
@@ -123,15 +119,16 @@ public sealed class BinaryPatchSource
                     {
                         if (segmentStart != NotDefined)
                         {
-                            var dataPatchSegment = new DataPatchSegment(
-                                memory: buffer.AsMemory(start: segmentStart, length: position - segmentStart)
-                            );
-                            segments.Add(dataPatchSegment);
+                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart);
+                            await writer.WriteDataAsync(memory, cancellationToken);
                             segmentStart = NotDefined;
                         }
 
-                        var copyPatchSegment = new CopyPatchSegment(blockIndex: block.BlockIndex, length: block.Length);
-                        segments.Add(copyPatchSegment);
+                        await writer.WriteCopyAsync(
+                            blockIndex: block.BlockIndex,
+                            blockLength: block.Length,
+                            cancellationToken: cancellationToken
+                        );
 
                         buffer
                             .AsSpan(start: position + block.Length, length: bufferLength - position - block.Length - 1)
@@ -160,27 +157,51 @@ public sealed class BinaryPatchSource
             Pool.Return(buffer);
         }
 
-        return new BinaryPatch(segments, _blockSize);
+        await writer.CompleteAsync(cancellationToken);
     }
 
-    public static void Apply(ReadOnlyMemory<byte> original, BinaryPatch patch, Stream target)
+    public static async ValueTask ApplyAsync(
+        Stream source,
+        Stream patch,
+        Stream output,
+        CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(patch);
-        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(output);
 
-        foreach (var segment in patch.Segments)
+        if (!source.CanRead)
+            throw new ArgumentException("source stream must be readable.", nameof(source));
+        if (!source.CanSeek)
+            throw new ArgumentException("source stream must be seekable.", nameof(source));
+
+        using var reader = new PatchReader(patch);
+        var blockSize = await reader.InitializeAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
         {
-            switch (segment)
+            switch (reader.Segment)
             {
                 case DataPatchSegment dataPatchSegment:
-                    target.Write(dataPatchSegment.Memory.Span);
+                    await output.WriteAsync(dataPatchSegment.Data, cancellationToken);
                     break;
                 case CopyPatchSegment copyPatchSegment:
-                    var slice = original.Slice(
-                        start: copyPatchSegment.BlockIndex * patch.BlockSize,
-                        length: copyPatchSegment.Length
-                    );
-                    target.Write(slice.Span);
+                    var targetPosition = blockSize * copyPatchSegment.BlockIndex;
+                    source.Seek(targetPosition, SeekOrigin.Begin);
+                    var buffer = Pool.Rent(copyPatchSegment.BlockLength);
+                    try
+                    {
+                        var count = await source.ReadAsync(buffer,
+                            offset: 0,
+                            count: copyPatchSegment.BlockLength,
+                            cancellationToken);
+                        await output.WriteAsync(buffer, offset: 0, count: count, cancellationToken);
+                    }
+                    finally
+                    {
+                        Pool.Return(buffer);
+                    }
+
                     break;
                 default:
                     throw new NotSupportedException();
