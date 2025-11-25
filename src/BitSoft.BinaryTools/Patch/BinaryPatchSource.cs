@@ -108,12 +108,16 @@ public sealed class BinaryPatchSource
                             break;
                         }
 
-                        var removedByte = buffer[position - 1];
-                        var addedByte = position + _blockSize <= length
-                            ? buffer[position + _blockSize - 1]
-                            : buffer[buffer.Length - 1];
-
-                        rollingHash.Update(removed: removedByte, added: addedByte);
+                        if (position + _blockSize < length)
+                        {
+                            var removedByte = buffer[position - 1];
+                            var addedByte = buffer[position + _blockSize - 1];
+                            rollingHash.Update(removed: removedByte, added: addedByte);
+                        }
+                        else
+                        {
+                            resetHash = true;
+                        }
                     }
                     else
                     {
