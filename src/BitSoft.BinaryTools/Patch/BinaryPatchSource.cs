@@ -26,7 +26,7 @@ public sealed class BinaryPatchSource
         return new BinaryPatchSource(blockInfoContainer, blockSize);
     }
 
-    public async ValueTask CalculateAsync(Stream modified, Stream output, CancellationToken cancellationToken = default)
+    public async ValueTask CreateAsync(Stream modified, Stream output, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(modified);
         ArgumentNullException.ThrowIfNull(output);

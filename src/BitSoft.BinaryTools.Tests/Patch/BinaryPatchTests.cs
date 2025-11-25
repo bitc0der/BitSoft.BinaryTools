@@ -20,7 +20,7 @@ public class BinaryPatchTests
 
         // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CalculateAsync(modifiedStream, output: patchStream);
+        await patchSource.CreateAsync(modifiedStream, output: patchStream);
 
         // Assert
         originalStream.Position = 0;
@@ -50,7 +50,7 @@ public class BinaryPatchTests
 
         // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CalculateAsync(modifiedStream, output: patchStream);
+        await patchSource.CreateAsync(modifiedStream, output: patchStream);
 
         // Assert
         originalStream.Position = 0;
@@ -80,7 +80,7 @@ public class BinaryPatchTests
 
         // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CalculateAsync(modifiedStream, output: patchStream);
+        await patchSource.CreateAsync(modifiedStream, output: patchStream);
 
         // Assert
         originalStream.Position = 0;
@@ -110,7 +110,7 @@ public class BinaryPatchTests
 
         // Act
         var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CalculateAsync(modifiedStream, output: patchStream);
+        await patchSource.CreateAsync(modifiedStream, output: patchStream);
 
         // Assert
         originalStream.Position = 0;
