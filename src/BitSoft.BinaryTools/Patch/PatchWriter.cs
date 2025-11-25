@@ -7,14 +7,13 @@ namespace BitSoft.BinaryTools.Patch;
 
 internal sealed class PatchWriter : IDisposable
 {
-    private readonly Stream _output;
-
     private readonly BinaryWriter _writer;
 
     public PatchWriter(Stream output)
     {
-        _output = output ?? throw new ArgumentNullException(nameof(output));
-        _writer = new BinaryWriter(_output, encoding: ProtocolConst.DefaultEncoding, leaveOpen: true);
+        ArgumentNullException.ThrowIfNull(output);
+
+        _writer = new BinaryWriter(output, encoding: ProtocolConst.DefaultEncoding, leaveOpen: true);
     }
 
     public ValueTask WriteHeaderAsync(int blockSize, CancellationToken cancellationToken)

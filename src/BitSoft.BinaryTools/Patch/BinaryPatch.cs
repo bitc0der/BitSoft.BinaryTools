@@ -192,11 +192,10 @@ public static class BinaryPatch
                     var buffer = Pool.Rent(copyPatchSegment.BlockLength);
                     try
                     {
-                        var count = await source.ReadAsync(buffer,
-                            offset: 0,
-                            count: copyPatchSegment.BlockLength,
-                            cancellationToken);
-                        await output.WriteAsync(buffer, offset: 0, count: count, cancellationToken);
+                        var memory = buffer.AsMemory(start: 0, length: copyPatchSegment.BlockLength);
+                        var count = await source.ReadAsync(memory, cancellationToken);
+                        if (count != copyPatchSegment.BlockLength) throw new InvalidOperationException();
+                        await output.WriteAsync(memory, cancellationToken);
                     }
                     finally
                     {

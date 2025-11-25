@@ -6,46 +6,19 @@ using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch;
 
-internal interface IPatchSegment
-{
-}
-
-internal sealed class DataPatchSegment : IPatchSegment
-{
-    public DataPatchSegment(ReadOnlyMemory<byte> data)
-    {
-        Data = data;
-    }
-
-    public ReadOnlyMemory<byte> Data { get; }
-}
-
-internal sealed class CopyPatchSegment : IPatchSegment
-{
-    public int BlockIndex { get; }
-
-    public int BlockLength { get; }
-
-    public CopyPatchSegment(int blockIndex, int blockLength)
-    {
-        BlockIndex = blockIndex;
-        BlockLength = blockLength;
-    }
-}
-
 internal sealed class PatchReader : IDisposable
 {
-    private readonly Stream _source;
     private readonly BinaryReader _reader;
 
     private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
     private byte[]? _buffer;
 
-    public IPatchSegment? Segment { get; private set; } = null;
+    public IPatchSegment? Segment { get; private set; }
 
     public PatchReader(Stream source)
     {
-        _source = source ?? throw new ArgumentNullException(nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
+
         _reader = new BinaryReader(source, encoding: ProtocolConst.DefaultEncoding, leaveOpen: true);
     }
 
