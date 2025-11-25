@@ -1,120 +1,252 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
+using System.Buffers;
 using System.IO;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class BinaryPatch
+public static class BinaryPatch
 {
-    public int BlockSize { get; }
+    private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
 
-    public IReadOnlyList<IBinaryPatchSegment> Segments { get; }
-
-    public static Encoding DefaultEncoding => Encoding.UTF8;
-
-    public BinaryPatch(IReadOnlyList<IBinaryPatchSegment> segments, int blockSize)
+    public static async ValueTask CreateAsync(
+        Stream source,
+        Stream modified,
+        Stream output,
+        int blockSize = 4 * 1024,
+        CancellationToken cancellationToken = default)
     {
-        if (blockSize <= 0) throw new ArgumentOutOfRangeException(nameof(blockSize));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(modified);
+        ArgumentNullException.ThrowIfNull(output);
 
-        Segments = segments ?? throw new ArgumentNullException(nameof(segments));
-        BlockSize = blockSize;
-    }
+        if (!modified.CanRead)
+            throw new ArgumentException($"{nameof(modified)} does not support reading.", nameof(modified));
+        if (!output.CanWrite)
+            throw new ArgumentException($"{nameof(output)} does not support writing.", nameof(output));
 
-    public void Write(Stream target, Encoding? encoding = null)
-    {
-        ArgumentNullException.ThrowIfNull(target);
+        var blockInfoContainer = await CalculateHashesAsync(source, blockSize, cancellationToken);
 
-        if (!target.CanWrite)
-            throw new ArgumentException("The target stream must be writable.", nameof(target));
+        using var writer = new PatchWriter(output);
 
-        encoding ??= DefaultEncoding;
+        await writer.WriteHeaderAsync(blockSize: blockSize, cancellationToken);
 
-        using var binaryWriter = new BinaryWriter(target, encoding, leaveOpen: true);
-
-        binaryWriter.Write(ProtocolConst.ProtocolVersion);
-        binaryWriter.Write(BlockSize);
-
-        for (var i = 0; i < Segments.Count; i++)
+        var bufferLength = blockSize * 2;
+        var buffer = Pool.Rent(minimumLength: bufferLength);
+        try
         {
-            var segment = Segments[i];
+            var length = await modified.ReadAsync(buffer.AsMemory(start: 0, length: bufferLength), cancellationToken);
+            if (length == 0)
+                return;
 
-            var segmentType = segment switch
-            {
-                CopyPatchSegment => ProtocolConst.SegmentTypes.CopyPatchSegment,
-                DataPatchSegment => ProtocolConst.SegmentTypes.DataPatchSegment,
-                _ => throw new InvalidOperationException($"Invalid segment type '{segment.GetType()}'.")
-            };
-            binaryWriter.Write(segmentType);
+            const int NotDefined = -1;
 
-            switch (segment)
+            var segmentStart = NotDefined;
+            var position = 0;
+
+            RollingHash rollingHash = default;
+            var resetHash = true;
+
+            while (true)
             {
-                case CopyPatchSegment copyPatchSegment:
-                    binaryWriter.Write(copyPatchSegment.BlockIndex);
-                    binaryWriter.Write(copyPatchSegment.Length);
-                    break;
-                case DataPatchSegment dataPatchSegment:
-                    binaryWriter.Write(dataPatchSegment.Memory.Length);
-                    binaryWriter.Write(dataPatchSegment.Memory.Span);
+                while (position < length)
+                {
+                    if (resetHash)
+                    {
+                        var spanLength = Math.Min(blockSize, length);
+                        var bufferSpan = buffer.AsSpan(start: 0, length: spanLength);
+                        rollingHash = RollingHash.Create(bufferSpan);
+                        resetHash = false;
+                    }
+
+                    var block = blockInfoContainer.Match(rollingHash);
+
+                    if (block is null)
+                    {
+                        if (length <= blockSize)
+                        {
+                            var memory = buffer.AsMemory(start: position, length: length);
+                            await writer.WriteDataAsync(memory, cancellationToken);
+                            position = 0;
+                            break;
+                        }
+
+                        if (segmentStart == NotDefined)
+                        {
+                            segmentStart = position;
+                        }
+                        else if (position - segmentStart + 1 == blockSize)
+                        {
+                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1);
+                            await writer.WriteDataAsync(memory, cancellationToken);
+
+                            buffer
+                                .AsSpan(start: position + 1, length: bufferLength - position - 2)
+                                .CopyTo(buffer.AsSpan(start: 0));
+
+                            segmentStart = NotDefined;
+                            resetHash = true;
+
+                            break;
+                        }
+
+                        position += 1;
+
+                        if (position == length)
+                        {
+                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart);
+                            await writer.WriteDataAsync(memory, cancellationToken);
+                            position = 0;
+                            break;
+                        }
+
+                        if (position + blockSize < length)
+                        {
+                            var removedByte = buffer[position - 1];
+                            var addedByte = buffer[position + blockSize - 1];
+                            rollingHash.Update(removed: removedByte, added: addedByte);
+                        }
+                        else
+                        {
+                            resetHash = true;
+                        }
+                    }
+                    else
+                    {
+                        if (segmentStart != NotDefined)
+                        {
+                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart);
+                            await writer.WriteDataAsync(memory, cancellationToken);
+                            segmentStart = NotDefined;
+                        }
+
+                        await writer.WriteCopyAsync(
+                            blockIndex: block.BlockIndex,
+                            blockLength: block.Length,
+                            cancellationToken: cancellationToken
+                        );
+
+                        buffer
+                            .AsSpan(start: position + block.Length, length: bufferLength - position - block.Length - 1)
+                            .CopyTo(buffer.AsSpan(start: 0));
+
+                        resetHash = true;
+
+                        break;
+                    }
+                }
+
+                length = await modified.ReadAsync(
+                    buffer.AsMemory(start: position, length: bufferLength - position - 1),
+                    cancellationToken: cancellationToken
+                );
+
+                length += position;
+                position = 0;
+
+                if (length == 0)
                     break;
             }
         }
+        finally
+        {
+            Pool.Return(buffer);
+        }
 
-        binaryWriter.Write(ProtocolConst.SegmentTypes.EndPatchSegment);
+        await writer.CompleteAsync(cancellationToken);
     }
 
-    public static BinaryPatch Read(Stream source, Encoding? encoding = null)
+    public static async ValueTask ApplyAsync(
+        Stream source,
+        Stream patch,
+        Stream output,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(patch);
+        ArgumentNullException.ThrowIfNull(output);
+
+        if (!source.CanRead)
+            throw new ArgumentException("source stream must be readable.", nameof(source));
+        if (!source.CanSeek)
+            throw new ArgumentException("source stream must be seekable.", nameof(source));
+        if (!patch.CanRead)
+            throw new ArgumentException("patch stream must be readable.", nameof(patch));
+        if (!output.CanWrite)
+            throw new ArgumentException("output stream must be writable.", nameof(output));
+
+        using var reader = new PatchReader(patch);
+        var blockSize = await reader.InitializeAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            switch (reader.Segment)
+            {
+                case DataPatchSegment dataPatchSegment:
+                    await output.WriteAsync(dataPatchSegment.Data, cancellationToken);
+                    break;
+                case CopyPatchSegment copyPatchSegment:
+                    var targetPosition = blockSize * copyPatchSegment.BlockIndex;
+                    source.Seek(targetPosition, SeekOrigin.Begin);
+                    var buffer = Pool.Rent(copyPatchSegment.BlockLength);
+                    try
+                    {
+                        var memory = buffer.AsMemory(start: 0, length: copyPatchSegment.BlockLength);
+                        var count = await source.ReadAsync(memory, cancellationToken);
+                        if (count != copyPatchSegment.BlockLength) throw new InvalidOperationException();
+                        await output.WriteAsync(memory, cancellationToken);
+                    }
+                    finally
+                    {
+                        Pool.Return(buffer);
+                    }
+
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+    }
+
+    private static async ValueTask<BlockInfoContainer> CalculateHashesAsync(
+        Stream source,
+        int blockSize,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
 
         if (!source.CanRead)
-            throw new ArgumentException("The source stream must be readable.", nameof(source));
+            throw new ArgumentException("source stream must be readable.", nameof(source));
 
-        encoding ??= DefaultEncoding;
+        var blockInfoContainer = new BlockInfoContainer();
 
-        using var binaryReader = new BinaryReader(source, encoding, leaveOpen: true);
+        var blockIndex = 0;
 
-        var protocolVersion = binaryReader.ReadInt32();
-        if (protocolVersion > ProtocolConst.ProtocolVersion)
-            throw new InvalidOperationException($"Invalid protocol version '{protocolVersion}'.");
-
-        var blockSize = binaryReader.ReadInt32();
-
-        var segments = new List<IBinaryPatchSegment>();
-
-        while (true)
+        var buffer = Pool.Rent(blockSize);
+        try
         {
-            var segmentType = binaryReader.ReadByte();
-            IBinaryPatchSegment? segment = null;
-            switch (segmentType)
+            while (true)
             {
-                case ProtocolConst.SegmentTypes.CopyPatchSegment:
-                {
-                    var blockIndex = binaryReader.ReadInt32();
-                    var length = binaryReader.ReadInt32();
-                    segment = new CopyPatchSegment(blockIndex: blockIndex, length: length);
+                var length = await source.ReadAsync(buffer.AsMemory(start: 0, length: blockSize), cancellationToken);
+                if (length == 0)
                     break;
-                }
-                case ProtocolConst.SegmentTypes.DataPatchSegment:
-                {
-                    var length = binaryReader.ReadInt32();
-                    var bytes = binaryReader.ReadBytes(length);
-                    segment = new DataPatchSegment(bytes);
-                    break;
-                }
-                case ProtocolConst.SegmentTypes.EndPatchSegment:
-                    // do nothing
-                    break;
-                default:
-                    throw new InvalidOperationException($"Invalid segment type Id '{segmentType}'.");
-            }
 
-            if (segment is not null)
-                segments.Add(segment);
-            else
-                break;
+                var hash = RollingHash.Create(buffer.AsSpan(start: 0, length: length));
+
+                blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
+
+                if (length < blockSize)
+                    break;
+
+                blockIndex += 1;
+            }
+        }
+        finally
+        {
+            Pool.Return(buffer);
         }
 
-        return new BinaryPatch(segments, blockSize);
+        return blockInfoContainer;
     }
 }

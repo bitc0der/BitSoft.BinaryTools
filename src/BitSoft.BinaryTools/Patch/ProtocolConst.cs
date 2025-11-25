@@ -1,9 +1,13 @@
+using System.Text;
+
 namespace BitSoft.BinaryTools.Patch;
 
 public static class ProtocolConst
 {
+    public static Encoding DefaultEncoding => Encoding.UTF8;
+
     public const int ProtocolVersion = 1;
-    
+
     public static class SegmentTypes
     {
         public const byte CopyPatchSegment = 0x1;

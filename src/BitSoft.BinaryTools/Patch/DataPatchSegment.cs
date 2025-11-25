@@ -2,12 +2,7 @@ using System;
 
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class DataPatchSegment : IBinaryPatchSegment
+internal sealed class DataPatchSegment(ReadOnlyMemory<byte> data) : IPatchSegment
 {
-    public ReadOnlyMemory<byte> Memory { get; }
-
-    public DataPatchSegment(ReadOnlyMemory<byte> memory)
-    {
-        Memory = memory;
-    }
+    public ReadOnlyMemory<byte> Data { get; } = data;
 }

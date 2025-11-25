@@ -4,13 +4,7 @@ namespace BitSoft.BinaryTools.Patch;
 
 internal sealed class BlockInfoContainer
 {
-    private readonly Dictionary<uint, List<PatchBlockInfo>> _hashes;
-
-    public BlockInfoContainer(int length, int blockSize)
-    {
-        var capacity = length / blockSize;
-        _hashes = new Dictionary<uint, List<PatchBlockInfo>>(capacity: capacity);
-    }
+    private readonly Dictionary<uint, List<PatchBlockInfo>> _hashes = new();
 
     public void Process(RollingHash hash, int blockIndex, int blockLength)
     {

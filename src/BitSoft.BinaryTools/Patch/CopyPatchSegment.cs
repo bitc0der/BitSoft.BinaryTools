@@ -1,14 +1,8 @@
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class CopyPatchSegment : IBinaryPatchSegment
+internal sealed class CopyPatchSegment(int blockIndex, int blockLength) : IPatchSegment
 {
-    public int BlockIndex { get; }
+    public int BlockIndex { get; } = blockIndex;
 
-    public int Length { get; }
-
-    public CopyPatchSegment(int blockIndex, int length)
-    {
-        BlockIndex = blockIndex;
-        Length = length;
-    }
+    public int BlockLength { get; } = blockLength;
 }
