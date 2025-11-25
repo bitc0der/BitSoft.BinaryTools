@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class BinaryPatch
+public static class BinaryPatch
 {
     private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
 
