@@ -11,24 +11,23 @@ public class BinaryPatchTests
     public async Task Should_ReturnBinaryPatchSegment_When_ModifiedSameLength()
     {
         // Arrange
-        var original = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
+        var source = new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 };
         var modified = new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 };
 
-        using var originalStream = new MemoryStream(original);
+        using var sourceStream = new MemoryStream(source);
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
         // Act
-        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CreateAsync(modifiedStream, output: patchStream);
+        await BinaryPatch.CreateAsync(source: sourceStream, modified: modifiedStream, output: patchStream, blockSize: 2);
 
         // Assert
-        originalStream.Position = 0;
+        sourceStream.Position = 0;
         patchStream.Position = 0;
 
         using var patchedStream = new MemoryStream();
 
-        await BinaryPatchSource.ApplyAsync(source: originalStream, patch: patchStream, output: patchedStream);
+        await BinaryPatch.ApplyAsync(source: sourceStream, patch: patchStream, output: patchedStream);
 
         var patched = patchedStream.ToArray();
 
@@ -41,24 +40,23 @@ public class BinaryPatchTests
     public async Task Should_ReturnEndOfFilePatchSegment_When_ModifiedShorterThanOriginal()
     {
         // Arrange
-        var original = new byte[] { 0x0, 0x1 };
+        var source = new byte[] { 0x0, 0x1 };
         var modified = new byte[] { 0x0 };
 
-        using var originalStream = new MemoryStream(original);
+        using var sourceStream = new MemoryStream(source);
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
         // Act
-        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CreateAsync(modifiedStream, output: patchStream);
+        await BinaryPatch.CreateAsync(source: sourceStream, modified: modifiedStream, output: patchStream, blockSize: 2);
 
         // Assert
-        originalStream.Position = 0;
+        sourceStream.Position = 0;
         patchStream.Position = 0;
 
         using var patchedStream = new MemoryStream();
 
-        await BinaryPatchSource.ApplyAsync(source: originalStream, patch: patchStream, output: patchedStream);
+        await BinaryPatch.ApplyAsync(source: sourceStream, patch: patchStream, output: patchedStream);
 
         var patched = patchedStream.ToArray();
 
@@ -71,24 +69,23 @@ public class BinaryPatchTests
     public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerThanOriginal()
     {
         // Arrange
-        var original = new byte[] { 0x0 };
+        var source = new byte[] { 0x0 };
         var modified = new byte[] { 0x1, 0x2 };
 
-        using var originalStream = new MemoryStream(original);
+        using var sourceStream = new MemoryStream(source);
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
         // Act
-        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CreateAsync(modifiedStream, output: patchStream);
+        await BinaryPatch.CreateAsync(source: sourceStream, modified: modifiedStream, output: patchStream, blockSize: 2);
 
         // Assert
-        originalStream.Position = 0;
+        sourceStream.Position = 0;
         patchStream.Position = 0;
 
         using var patchedStream = new MemoryStream();
 
-        await BinaryPatchSource.ApplyAsync(source: originalStream, patch: patchStream, output: patchedStream);
+        await BinaryPatch.ApplyAsync(source: sourceStream, patch: patchStream, output: patchedStream);
 
         var patched = patchedStream.ToArray();
 
@@ -101,24 +98,23 @@ public class BinaryPatchTests
     public async Task Should_ReturnBinaryPatchSegment_When_ModifiedLongerAndDifferent()
     {
         // Arrange
-        var original = new byte[] { 0x1, 0x2 };
+        var source = new byte[] { 0x1, 0x2 };
         var modified = new byte[] { 0x3, 0x4, 0x5 };
 
-        using var originalStream = new MemoryStream(original);
+        using var sourceStream = new MemoryStream(source);
         using var modifiedStream = new MemoryStream(modified);
         using var patchStream = new MemoryStream();
 
         // Act
-        var patchSource = await BinaryPatchSource.CreateAsync(originalStream, blockSize: 2);
-        await patchSource.CreateAsync(modifiedStream, output: patchStream);
+        await BinaryPatch.CreateAsync(source: sourceStream, modified: modifiedStream, output: patchStream, blockSize: 2);
 
         // Assert
-        originalStream.Position = 0;
+        sourceStream.Position = 0;
         patchStream.Position = 0;
 
         using var patchedStream = new MemoryStream();
 
-        await BinaryPatchSource.ApplyAsync(source: originalStream, patch: patchStream, output: patchedStream);
+        await BinaryPatch.ApplyAsync(source: sourceStream, patch: patchStream, output: patchedStream);
 
         var patched = patchedStream.ToArray();
 

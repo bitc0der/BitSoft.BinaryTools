@@ -6,28 +6,18 @@ using System.Threading.Tasks;
 
 namespace BitSoft.BinaryTools.Patch;
 
-public sealed class BinaryPatchSource
+public sealed class BinaryPatch
 {
-    private readonly BlockInfoContainer _blockInfoContainer;
-    private readonly int _blockSize;
-
     private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
 
-    private BinaryPatchSource(BlockInfoContainer blockInfoContainer, int blockSize)
+    public static async ValueTask CreateAsync(
+        Stream source,
+        Stream modified,
+        Stream output,
+        int blockSize = 4 * 1024,
+        CancellationToken cancellationToken = default)
     {
-        _blockInfoContainer = blockInfoContainer ?? throw new ArgumentNullException(nameof(blockInfoContainer));
-        _blockSize = blockSize;
-    }
-
-    public static async ValueTask<BinaryPatchSource> CreateAsync(Stream original, int blockSize = 4 * 1024)
-    {
-        ArgumentNullException.ThrowIfNull(original);
-        var blockInfoContainer = await CalculateHashesAsync(original, blockSize);
-        return new BinaryPatchSource(blockInfoContainer, blockSize);
-    }
-
-    public async ValueTask CreateAsync(Stream modified, Stream output, CancellationToken cancellationToken = default)
-    {
+        ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(modified);
         ArgumentNullException.ThrowIfNull(output);
 
@@ -36,11 +26,13 @@ public sealed class BinaryPatchSource
         if (!output.CanWrite)
             throw new ArgumentException($"{nameof(output)} does not support writing.", nameof(output));
 
+        var blockInfoContainer = await CalculateHashesAsync(source, blockSize, cancellationToken);
+
         using var writer = new PatchWriter(output);
 
-        await writer.WriteHeaderAsync(blockSize: _blockSize, cancellationToken);
+        await writer.WriteHeaderAsync(blockSize: blockSize, cancellationToken);
 
-        var bufferLength = _blockSize * 2;
+        var bufferLength = blockSize * 2;
         var buffer = Pool.Rent(minimumLength: bufferLength);
         try
         {
@@ -62,17 +54,17 @@ public sealed class BinaryPatchSource
                 {
                     if (resetHash)
                     {
-                        var spanLength = Math.Min(_blockSize, length);
+                        var spanLength = Math.Min(blockSize, length);
                         var bufferSpan = buffer.AsSpan(start: 0, length: spanLength);
                         rollingHash = RollingHash.Create(bufferSpan);
                         resetHash = false;
                     }
 
-                    var block = _blockInfoContainer.Match(rollingHash);
+                    var block = blockInfoContainer.Match(rollingHash);
 
                     if (block is null)
                     {
-                        if (length <= _blockSize)
+                        if (length <= blockSize)
                         {
                             var memory = buffer.AsMemory(start: position, length: length);
                             await writer.WriteDataAsync(memory, cancellationToken);
@@ -84,7 +76,7 @@ public sealed class BinaryPatchSource
                         {
                             segmentStart = position;
                         }
-                        else if (position - segmentStart + 1 == _blockSize)
+                        else if (position - segmentStart + 1 == blockSize)
                         {
                             var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1);
                             await writer.WriteDataAsync(memory, cancellationToken);
@@ -109,10 +101,10 @@ public sealed class BinaryPatchSource
                             break;
                         }
 
-                        if (position + _blockSize < length)
+                        if (position + blockSize < length)
                         {
                             var removedByte = buffer[position - 1];
-                            var addedByte = buffer[position + _blockSize - 1];
+                            var addedByte = buffer[position + blockSize - 1];
                             rollingHash.Update(removed: removedByte, added: addedByte);
                         }
                         else
