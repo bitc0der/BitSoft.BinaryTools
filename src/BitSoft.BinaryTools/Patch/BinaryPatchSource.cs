@@ -31,6 +31,11 @@ public sealed class BinaryPatchSource
         ArgumentNullException.ThrowIfNull(modified);
         ArgumentNullException.ThrowIfNull(output);
 
+        if (!modified.CanRead)
+            throw new ArgumentException($"{nameof(modified)} does not support reading.", nameof(modified));
+        if (!output.CanWrite)
+            throw new ArgumentException($"{nameof(output)} does not support writing.", nameof(output));
+
         using var writer = new PatchWriter(output);
 
         await writer.WriteHeaderAsync(blockSize: _blockSize, cancellationToken);
@@ -174,6 +179,10 @@ public sealed class BinaryPatchSource
             throw new ArgumentException("source stream must be readable.", nameof(source));
         if (!source.CanSeek)
             throw new ArgumentException("source stream must be seekable.", nameof(source));
+        if (!patch.CanRead)
+            throw new ArgumentException("patch stream must be readable.", nameof(patch));
+        if (!output.CanWrite)
+            throw new ArgumentException("output stream must be writable.", nameof(output));
 
         using var reader = new PatchReader(patch);
         var blockSize = await reader.InitializeAsync(cancellationToken);
