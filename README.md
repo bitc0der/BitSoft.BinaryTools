@@ -11,7 +11,7 @@ using System.IO;
 using System.Threading.Tasks;
 using BitSoft.BinaryTools.Patch;
 
-public async ValueTask CreatePatch(Stream source, Stream target, Stream output, CancellationToken token)
+public async ValueTask CreatePatchAsync(Stream source, Stream target, Stream output, CancellationToken token)
 {
     await BinaryPatch.CreateAsync(source, target, output, cancellationToken: token);
 }
