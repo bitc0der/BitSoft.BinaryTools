@@ -7,6 +7,10 @@ Yet another one tools lib for operations with binary data.
 Calculate diff and create patch for two streams:
 
 ```csharp
+using System.IO;
+using System.Threading.Tasks;
+using BitSoft.BinaryTools.Patch;
+
 public async ValueTask CreatePatch(Stream source, Stream target, Stream output, CancellationToken token)
 {
     await BinaryPatch.CreateAsync(source, target, output, cancellationToken: token);
@@ -16,6 +20,10 @@ public async ValueTask CreatePatch(Stream source, Stream target, Stream output, 
 Apply patch to a source stream:
 
 ```csharp
+using System.IO;
+using System.Threading.Tasks;
+using BitSoft.BinaryTools.Patch;
+
 public async ValueTask ApplyAsync(Stream source, Stream patch, Stream output, CancellationToken token)
 {
     await BinaryPatch.ApplyAsync(source, patch, output, cancellationToken: token);
