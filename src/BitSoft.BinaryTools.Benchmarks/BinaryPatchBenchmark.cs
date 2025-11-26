@@ -18,12 +18,14 @@ public class BinaryPatchBenchmark
     private Stream? _modifiedStream;
     private Stream? _patchStream;
 
-    [Params(1024 * 1024, 10 * 1024 * 1024)]
+    [Params(1024 * 1024, 10 * 1024 * 1024, 100 * 1024 * 1024)]
     public int BufferLength { get; set; }
 
-    [Params(1, 3, 5)] public int ChangedBlocks { get; set; }
+    [Params(3, 5)] public int ChangedBlocks { get; set; }
 
-    [Params(16, 128, 512)] public int ChangeSize { get; set; }
+    [Params(128, 512)] public int ChangeSize { get; set; }
+
+    [Params(512, 1024, 4096)] public int BlockSize { get; set; }
 
     [GlobalSetup]
     public void GlobalSetUp()
@@ -72,6 +74,11 @@ public class BinaryPatchBenchmark
     [Benchmark]
     public async Task CreateBinaryPatch()
     {
-        await BinaryPatch.CreateAsync(source: _sourceStream!, modified: _modifiedStream!, output: _patchStream!);
+        await BinaryPatch.CreateAsync(
+            source: _sourceStream!,
+            modified: _modifiedStream!,
+            output: _patchStream!,
+            blockSize: BlockSize
+        );
     }
 }
