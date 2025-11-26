@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using BitSoft.BinaryTools.Benchmarks.Utils;
 using BitSoft.BinaryTools.Patch;
 
 namespace BitSoft.BinaryTools.Benchmarks;
@@ -20,13 +21,30 @@ public class BinaryPatchBenchmark
     [Params(1024 * 1024, 10 * 1024 * 1024)]
     public int BufferLength { get; set; }
 
+    [Params(1, 3, 5)] public int ChangedBlocks { get; set; }
+
+    [Params(16, 128, 512)] public int ChangeSize { get; set; }
+
     [GlobalSetup]
     public void GlobalSetUp()
     {
         _source = new byte[BufferLength];
         _modified = new byte[BufferLength];
 
+        Create.RandomData(_source);
+
         Array.Copy(sourceArray: _source, destinationArray: _modified, length: _source.Length);
+
+        var changeBlockSize = _source.Length / (ChangedBlocks + 1);
+
+        for (var b = 1; b <= ChangedBlocks; b++)
+        {
+            var position = changeBlockSize * b;
+
+            var span = _modified.AsSpan(start: position, length: ChangeSize);
+
+            Create.RandomData(span);
+        }
 
         _sourceStream = new MemoryStream(_source);
         _modifiedStream = new MemoryStream(_modified);
