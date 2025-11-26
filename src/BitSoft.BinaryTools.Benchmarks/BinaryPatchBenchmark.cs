@@ -17,11 +17,14 @@ public class BinaryPatchBenchmark
     private Stream? _modifiedStream;
     private Stream? _patchStream;
 
+    [Params(1024 * 1024, 10 * 1024 * 1024)]
+    public int BufferLength { get; set; }
+
     [GlobalSetup]
     public void GlobalSetUp()
     {
-        _source = new byte[1024];
-        _modified = new byte[1024];
+        _source = new byte[BufferLength];
+        _modified = new byte[BufferLength];
 
         Array.Copy(sourceArray: _source, destinationArray: _modified, length: _source.Length);
 
