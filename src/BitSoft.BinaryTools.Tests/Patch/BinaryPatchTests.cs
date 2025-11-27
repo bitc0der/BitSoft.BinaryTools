@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using BitSoft.BinaryTools.Patch;
@@ -59,5 +61,41 @@ public class BinaryPatchTests
         Assert.That(patched, Is.Not.Null);
         Assert.That(patched.Length, Is.EqualTo(modified.Length));
         Assert.That(patched, Is.EqualTo(modified));
+    }
+
+    [Ignore("Performance test")]
+    [TestCase(10 * 1024 * 1024, 1024)]
+    [TestCase(10 * 1024 * 1024, 4 * 1024)]
+    public async Task Should_CreatePatch(int bufferLength, int blockSize)
+    {
+        // Arrange
+        var source = new byte[bufferLength];
+        var modified = new byte[bufferLength];
+
+        Random.Shared.NextBytes(source);
+
+        Array.Copy(sourceArray: source, destinationArray: modified, length: source.Length);
+
+        using var sourceStream = new MemoryStream(source);
+        using var modifiedStream = new MemoryStream(modified);
+        using var patchStream = new MemoryStream();
+
+        // Act
+        var stopwatch = Stopwatch.StartNew();
+
+        await BinaryPatch.CreateAsync(
+            source: sourceStream,
+            modified: modifiedStream,
+            output: patchStream,
+            blockSize: blockSize
+        );
+
+        stopwatch.Stop();
+
+        // Assert
+        Console.WriteLine("Source length: {0}", sourceStream.Length);
+        Console.WriteLine("Block size: {0}", blockSize);
+        Console.WriteLine("Patch length: {0}", patchStream.Position);
+        Console.WriteLine("Time: {0:g}", stopwatch.Elapsed);
     }
 }
