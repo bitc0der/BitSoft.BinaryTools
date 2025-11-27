@@ -6,10 +6,22 @@ internal sealed class BlockInfoContainer
 {
     private readonly Dictionary<uint, List<PatchBlockInfo>> _hashes = new();
 
+    public void Process(RollingHash hash, int blockIndex)
+    {
+        var checksum = hash.GetChecksum();
+        var block = new PatchBlockInfo(blockIndex: blockIndex, hash: checksum);
+        if (!_hashes.TryGetValue(checksum, out var blocks))
+        {
+            _hashes[block.Hash] = blocks = [];
+        }
+
+        blocks.Add(block);
+    }
+
     public void Process(RollingHash hash, int blockIndex, int blockLength)
     {
         var checksum = hash.GetChecksum();
-        var block = new PatchBlockInfo(blockIndex: blockIndex, hash: checksum, length: blockLength);
+        var block = new PatchBlockInfoWithLength(blockIndex: blockIndex, hash: checksum, length: blockLength);
         if (!_hashes.TryGetValue(checksum, out var blocks))
         {
             _hashes[block.Hash] = blocks = [];

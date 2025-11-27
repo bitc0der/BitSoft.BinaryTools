@@ -121,14 +121,28 @@ public static class BinaryPatch
                             segmentStart = NotDefined;
                         }
 
-                        await writer.WriteCopyAsync(
-                            blockIndex: block.BlockIndex,
-                            blockLength: block.Length,
-                            cancellationToken: cancellationToken
-                        );
+                        var blockLength = blockSize;
+
+                        if (block is PatchBlockInfoWithLength blockInfoWithLength)
+                        {
+                            blockLength = blockInfoWithLength.Length;
+
+                            await writer.WriteCopyBlockWithLengthAsync(
+                                blockIndex: block.BlockIndex,
+                                blockLength: blockLength,
+                                cancellationToken: cancellationToken
+                            );
+                        }
+                        else
+                        {
+                            await writer.WriteCopyBlockAsync(
+                                blockIndex: block.BlockIndex,
+                                cancellationToken: cancellationToken
+                            );
+                        }
 
                         buffer
-                            .AsSpan(start: position + block.Length, length: bufferLength - position - block.Length - 1)
+                            .AsSpan(start: position + blockLength, length: bufferLength - position - blockLength - 1)
                             .CopyTo(buffer.AsSpan(start: 0));
 
                         resetHash = true;
@@ -186,25 +200,40 @@ public static class BinaryPatch
                 case DataPatchSegment dataPatchSegment:
                     await output.WriteAsync(dataPatchSegment.Data, cancellationToken);
                     break;
-                case CopyPatchSegment copyPatchSegment:
-                    var targetPosition = blockSize * copyPatchSegment.BlockIndex;
-                    source.Seek(targetPosition, SeekOrigin.Begin);
-                    var buffer = Pool.Rent(copyPatchSegment.BlockLength);
-                    try
-                    {
-                        var memory = buffer.AsMemory(start: 0, length: copyPatchSegment.BlockLength);
-                        var count = await source.ReadAsync(memory, cancellationToken);
-                        if (count != copyPatchSegment.BlockLength) throw new InvalidOperationException();
-                        await output.WriteAsync(memory, cancellationToken);
-                    }
-                    finally
-                    {
-                        Pool.Return(buffer);
-                    }
-
+                case CopyBlockSegment copyBlockSegment:
+                    await CopyBlockSegmentAsync(
+                        blockIndex: copyBlockSegment.BlockIndex,
+                        blockLength: blockSize
+                    );
+                    break;
+                case CopyBlockWithLengthSegment copyPatchSegment:
+                    await CopyBlockSegmentAsync(
+                        blockIndex: copyPatchSegment.BlockIndex,
+                        blockLength: copyPatchSegment.BlockLength
+                    );
                     break;
                 default:
                     throw new NotSupportedException();
+            }
+
+            continue;
+
+            async ValueTask CopyBlockSegmentAsync(int blockIndex, int blockLength)
+            {
+                var targetPosition = blockSize * blockIndex;
+                source.Seek(targetPosition, SeekOrigin.Begin);
+                var buffer = Pool.Rent(blockLength);
+                try
+                {
+                    var memory = buffer.AsMemory(start: 0, length: blockLength);
+                    var count = await source.ReadAsync(memory, cancellationToken);
+                    if (count != blockLength) throw new InvalidOperationException();
+                    await output.WriteAsync(memory, cancellationToken);
+                }
+                finally
+                {
+                    Pool.Return(buffer);
+                }
             }
         }
     }
@@ -234,7 +263,14 @@ public static class BinaryPatch
 
                 var hash = RollingHash.Create(buffer.AsSpan(start: 0, length: length));
 
-                blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
+                if (length == blockSize)
+                {
+                    blockInfoContainer.Process(hash: hash, blockIndex: blockIndex);
+                }
+                else
+                {
+                    blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
+                }
 
                 if (length < blockSize)
                     break;
