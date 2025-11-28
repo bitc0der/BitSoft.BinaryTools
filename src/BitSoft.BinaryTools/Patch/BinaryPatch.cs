@@ -28,6 +28,7 @@ public static class BinaryPatch
 
         var blockInfoContainer = await CalculateHashesAsync(source, blockSize, cancellationToken);
 
+        using var reader = new StreamWindowReader(modified, Pool, windowSize: blockSize);
         using var writer = new PatchWriter(output);
 
         await writer.WriteHeaderAsync(blockSize: blockSize, cancellationToken);
