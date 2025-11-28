@@ -25,7 +25,7 @@ public class StreamWindowReader : IDisposable
         get
         {
             return _position >= 0
-                ? _buffer.AsMemory(start: _position, length: _windowSize)
+                ? _buffer.AsMemory(start: _position, length: Math.Min(_windowSize, _size - _position))
                 : throw new InvalidOperationException("The stream does not contain the window.");
         }
     }
