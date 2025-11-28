@@ -96,6 +96,9 @@ public class StreamWindowReader : IDisposable
             _position += 1;
         }
 
+        if (_position == _size)
+            return false;
+
         return true;
     }
 
