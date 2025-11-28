@@ -64,8 +64,6 @@ public class StreamWindowReader : IDisposable
             return true;
         }
 
-        _position += 1;
-
         if (_position == _bufferSize - _windowSize)
         {
             if (_pinnedPosition == NotDefined)
@@ -85,13 +83,17 @@ public class StreamWindowReader : IDisposable
                     cancellationToken
                 );
 
-                _position = 0;
+                _position = 1;
                 _size = length + count;
             }
             else
             {
                 throw new InvalidOperationException("Pinned position was not reset.");
             }
+        }
+        else
+        {
+            _position += 1;
         }
 
         return true;
