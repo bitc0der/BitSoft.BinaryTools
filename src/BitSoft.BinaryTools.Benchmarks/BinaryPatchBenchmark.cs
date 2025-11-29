@@ -17,7 +17,7 @@ public class BinaryPatchBenchmark
     private Stream? _modifiedStream;
     private Stream? _patchStream;
 
-    [Params(1024 * 1024)]
+    [Params(1024 * 1024, 10 * 1024 * 1024)]
     public int BufferLength { get; set; }
 
     [Params(5)]

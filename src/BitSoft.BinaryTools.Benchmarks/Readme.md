@@ -3,8 +3,10 @@
 ```
 | Method            | BufferLength | ChangedBlocks | ChangeSize | BlockSize | Mean     | Error    | StdDev   | Allocated |
 |------------------ |------------- |-------------- |----------- |---------- |---------:|---------:|---------:|----------:|
-| CreateBinaryPatch | 1048576      | 5             | 512        | 1024      | 31.39 ms | 13.92 ms | 0.763 ms |   2.21 MB |
-| CreateBinaryPatch | 1048576      | 5             | 512        | 4096      | 34.66 ms | 13.49 ms | 0.739 ms |   2.15 MB |
+| CreateBinaryPatch | 1048576      | 5             | 512        | 1024      |  1.692 s | 0.0159 s | 0.0009 s |   2.29 MB |
+| CreateBinaryPatch | 1048576      | 5             | 512        | 4096      |  5.764 s | 0.1578 s | 0.0087 s |   2.18 MB |
+| CreateBinaryPatch | 10485760     | 5             | 512        | 1024      | 16.832 s | 0.6871 s | 0.0377 s |  34.85 MB |
+| CreateBinaryPatch | 10485760     | 5             | 512        | 4096      | 57.220 s | 0.9950 s | 0.0545 s |  32.69 MB |
 ```
 ## Legends
 ```
