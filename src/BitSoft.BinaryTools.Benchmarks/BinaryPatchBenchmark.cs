@@ -38,7 +38,6 @@ public class BinaryPatchBenchmark
         Array.Copy(sourceArray: _source, destinationArray: _modified, length: _source.Length);
 
         var changeBlockSize = _source.Length / (ChangedBlocks + 1);
-
         for (var b = 1; b <= ChangedBlocks; b++)
         {
             var position = changeBlockSize * b;

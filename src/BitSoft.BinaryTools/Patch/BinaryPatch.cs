@@ -26,7 +26,9 @@ public static class BinaryPatch
         if (!output.CanWrite)
             throw new ArgumentException($"{nameof(output)} does not support writing.", nameof(output));
 
-        var blockInfoContainer = await CalculateHashesAsync(source, blockSize, cancellationToken);
+        using var hashCalculator = new HashCalculator();
+
+        var blockInfoContainer = await CalculateHashesAsync(source, hashCalculator, blockSize, cancellationToken);
 
         using var reader = new StreamWindowReader(modified, Pool, windowSize: blockSize);
         using var writer = new PatchWriter(output);
@@ -41,8 +43,6 @@ public static class BinaryPatch
         RollingHash rollingHash = default;
         var resetHash = true;
 
-        using var strongHashCalculator = new HashCalculator();
-
         while (true)
         {
             if (resetHash)
@@ -51,9 +51,7 @@ public static class BinaryPatch
                 resetHash = false;
             }
 
-            var strongHash = strongHashCalculator.CalculatedHash(reader.Window.Span);
-
-            var block = blockInfoContainer.Match(rollingHash, strongHash);
+            var block = blockInfoContainer.Match(rollingHash, reader.Window.Span);
 
             if (block is null)
             {
@@ -195,19 +193,19 @@ public static class BinaryPatch
 
     private static async ValueTask<BlockInfoContainer> CalculateHashesAsync(
         Stream source,
+        HashCalculator hashCalculator,
         int blockSize,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(hashCalculator);
 
         if (!source.CanRead)
             throw new ArgumentException("source stream must be readable.", nameof(source));
 
-        var blockInfoContainer = new BlockInfoContainer();
+        var blockInfoContainer = new BlockInfoContainer(hashCalculator);
 
         var blockIndex = 0;
-
-        using var hashCalculator = new HashCalculator();
 
         var buffer = Pool.Rent(blockSize);
         try

@@ -9,7 +9,7 @@ internal sealed class HashCalculator : IDisposable
     private static ArrayPool<byte> Pool { get; } = ArrayPool<byte>.Shared;
 
     private readonly MD5 _md5 = MD5.Create();
-    private readonly byte[] _buffer = Pool.Rent(minimumLength: 32);
+    private readonly byte[] _buffer = Pool.Rent(minimumLength: 16);
 
     public byte[] CalculatedHash(byte[] source, int offset, int count)
     {

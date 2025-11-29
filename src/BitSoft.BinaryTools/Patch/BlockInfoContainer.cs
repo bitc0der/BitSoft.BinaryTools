@@ -5,7 +5,13 @@ namespace BitSoft.BinaryTools.Patch;
 
 internal sealed class BlockInfoContainer
 {
+    private readonly HashCalculator _hashCalculator;
     private readonly Dictionary<uint, List<PatchBlockInfo>> _hashes = new();
+
+    public BlockInfoContainer(HashCalculator hashCalculator)
+    {
+        _hashCalculator = hashCalculator ?? throw new ArgumentNullException(nameof(hashCalculator));
+    }
 
     public void Process(int blockIndex, RollingHash hash, byte[] strongHash)
     {
@@ -36,11 +42,13 @@ internal sealed class BlockInfoContainer
         blocks.Add(block);
     }
 
-    public PatchBlockInfo? Match(RollingHash hash, ReadOnlySpan<byte> strongHash)
+    public PatchBlockInfo? Match(RollingHash hash, ReadOnlySpan<byte> span)
     {
         var checksum = hash.GetChecksum();
         if (_hashes.TryGetValue(checksum, out var blocks))
         {
+            var strongHash = _hashCalculator.CalculatedHash(span);
+
             foreach (var block in blocks)
             {
                 if (block.StrongHash.SequenceEqual(strongHash))

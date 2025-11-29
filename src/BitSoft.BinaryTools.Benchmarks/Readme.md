@@ -1,12 +1,12 @@
 ﻿# Benchmarks
 
 ```
-| Method            | BufferLength | ChangedBlocks | ChangeSize | BlockSize | Mean     | Error    | StdDev   | Allocated |
-|------------------ |------------- |-------------- |----------- |---------- |---------:|---------:|---------:|----------:|
-| CreateBinaryPatch | 1048576      | 5             | 512        | 1024      |  1.692 s | 0.0159 s | 0.0009 s |   2.29 MB |
-| CreateBinaryPatch | 1048576      | 5             | 512        | 4096      |  5.764 s | 0.1578 s | 0.0087 s |   2.18 MB |
-| CreateBinaryPatch | 10485760     | 5             | 512        | 1024      | 16.832 s | 0.6871 s | 0.0377 s |  34.85 MB |
-| CreateBinaryPatch | 10485760     | 5             | 512        | 4096      | 57.220 s | 0.9950 s | 0.0545 s |  32.69 MB |
+| Method            | BufferLength | ChangedBlocks | ChangeSize | BlockSize | Mean      | Error    | StdDev   | Allocated |
+|------------------ |------------- |-------------- |----------- |---------- |----------:|---------:|---------:|----------:|
+| CreateBinaryPatch | 1048576      | 5             | 512        | 1024      |  36.85 ms | 10.66 ms | 0.584 ms |    2.3 MB |
+| CreateBinaryPatch | 1048576      | 5             | 512        | 4096      |  37.47 ms | 11.53 ms | 0.632 ms |   2.19 MB |
+| CreateBinaryPatch | 10485760     | 5             | 512        | 1024      | 397.60 ms | 28.31 ms | 1.552 ms |  34.86 MB |
+| CreateBinaryPatch | 10485760     | 5             | 512        | 4096      | 376.37 ms | 58.44 ms | 3.203 ms |  32.71 MB |
 ```
 ## Legends
 ```
