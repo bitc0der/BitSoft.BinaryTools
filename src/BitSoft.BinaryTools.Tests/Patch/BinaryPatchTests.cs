@@ -68,6 +68,16 @@ public class BinaryPatchTests
             3
         );
         yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC },
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0xA, 0xA, 0xA, 0xA, 0xB, 0xA, 0xC },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9 },
+            new byte[] { 0x1, 0x2, 0xA, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9 },
+            4
+        );
+        yield return new TestCaseData(
             new byte[] { 0x0, 0x1 },
             new byte[] { 0x0 },
             2
@@ -114,10 +124,9 @@ public class BinaryPatchTests
     }
 
     [Ignore("Performance test")]
-    [TestCase(4 * 4, 4)]
-    [TestCase(10 * 1024 * 1024, 1024)]
-    [TestCase(10 * 1024 * 1024, 4 * 1024)]
-    public async Task Should_CreatePatch(int bufferLength, int blockSize)
+    [TestCase(3 * 4, 4, 2, 2)]
+    [TestCase(100 * 4 * 4, 4, 5, 6)]
+    public async Task Should_CreatePatch(int bufferLength, int blockSize, int changedBlocks, int changeSize)
     {
         // Arrange
         var source = new byte[bufferLength];
@@ -126,6 +135,17 @@ public class BinaryPatchTests
         Random.Shared.NextBytes(source);
 
         Array.Copy(sourceArray: source, destinationArray: modified, length: source.Length);
+
+        var changeBlockSize = source.Length / (changedBlocks + 1);
+
+        for (var b = 1; b <= changedBlocks; b++)
+        {
+            var position = changeBlockSize * b;
+
+            var span = modified.AsSpan(start: position, length: changeSize);
+
+            Random.Shared.NextBytes(span);
+        }
 
         using var sourceStream = new MemoryStream(source);
         using var modifiedStream = new MemoryStream(modified);
@@ -147,6 +167,19 @@ public class BinaryPatchTests
         Console.WriteLine("Source length: {0}", sourceStream.Length);
         Console.WriteLine("Block size: {0}", blockSize);
         Console.WriteLine("Patch length: {0}", patchStream.Position);
-        Console.WriteLine("Time: {0:g}", stopwatch.Elapsed);
+        Console.WriteLine("Create time: {0:g}", stopwatch.Elapsed);
+
+        sourceStream.Position = 0;
+        patchStream.Position = 0;
+
+        using var patchedStream = new MemoryStream();
+
+        stopwatch.Restart();
+        await BinaryPatch.ApplyAsync(source: sourceStream, patch: patchStream, output: patchedStream);
+        stopwatch.Stop();
+
+        Console.WriteLine("Apply time: {0:g}", stopwatch.Elapsed);
+
+        Assert.That(patchedStream.ToArray(), Is.EqualTo(modified));
     }
 }

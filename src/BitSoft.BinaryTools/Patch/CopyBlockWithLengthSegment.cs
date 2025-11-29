@@ -6,8 +6,3 @@ internal sealed class CopyBlockWithLengthSegment(int blockIndex, int blockLength
 
     public int BlockLength { get; } = blockLength;
 }
-
-internal sealed class CopyBlockSegment(int blockIndex) : IPatchSegment
-{
-    public int BlockIndex { get; } = blockIndex;
-}

@@ -36,7 +36,7 @@ public struct RollingHash
     public void Update(byte removed, byte added)
     {
         _a = (_a - removed + added) % Base;
-        _b = (_b - _length * removed + _a) % Base;
+        _b = (_b - _length * removed + _a - 1) % Base;
     }
 
     public uint GetChecksum() => (_b << 16) | _a;

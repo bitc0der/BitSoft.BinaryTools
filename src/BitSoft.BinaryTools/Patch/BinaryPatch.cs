@@ -41,6 +41,8 @@ public static class BinaryPatch
         RollingHash rollingHash = default;
         var resetHash = true;
 
+        using var strongHashCalculator = new HashCalculator();
+
         while (true)
         {
             if (resetHash)
@@ -49,7 +51,9 @@ public static class BinaryPatch
                 resetHash = false;
             }
 
-            var block = blockInfoContainer.Match(rollingHash);
+            var strongHash = strongHashCalculator.CalculatedHash(reader.Window.Span);
+
+            var block = blockInfoContainer.Match(rollingHash, strongHash);
 
             if (block is null)
             {
@@ -203,6 +207,8 @@ public static class BinaryPatch
 
         var blockIndex = 0;
 
+        using var hashCalculator = new HashCalculator();
+
         var buffer = Pool.Rent(blockSize);
         try
         {
@@ -215,14 +221,15 @@ public static class BinaryPatch
                 var span = buffer.AsSpan(start: 0, length: length);
 
                 var hash = RollingHash.Create(span);
+                var strongHash = hashCalculator.CalculatedHash(buffer, offset: 0, count: length);
 
                 if (length == blockSize)
                 {
-                    blockInfoContainer.Process(hash: hash, blockIndex: blockIndex);
+                    blockInfoContainer.Process(blockIndex: blockIndex, hash: hash, strongHash: strongHash);
                 }
                 else
                 {
-                    blockInfoContainer.Process(hash: hash, blockIndex: blockIndex, blockLength: length);
+                    blockInfoContainer.Process(blockIndex: blockIndex, blockLength: length, hash: hash, strongHash);
                 }
 
                 if (length < blockSize)
