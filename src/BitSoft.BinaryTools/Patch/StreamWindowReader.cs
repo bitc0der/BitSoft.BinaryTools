@@ -51,7 +51,7 @@ public class StreamWindowReader : IDisposable
         }
     }
 
-    public bool Pinned => _pinnedPosition != NotDefined;
+    public bool IsPinned => _pinnedPosition != NotDefined;
 
     public bool Finished => _position == _size - 1;
 
@@ -126,7 +126,7 @@ public class StreamWindowReader : IDisposable
             }
             else
             {
-                throw new InvalidOperationException($"Pinned position '{_pinnedPosition}' for buffer '{_bufferSize}' with window '{_windowSize}' was not reset.");
+                throw new InvalidOperationException($"Pinned position '{_pinnedPosition}' for buffer '{_size}/{_bufferSize}' with window '{_windowSize}' was not reset.");
             }
         }
 

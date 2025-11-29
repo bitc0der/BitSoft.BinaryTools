@@ -53,14 +53,14 @@ public static class BinaryPatch
 
             if (block is null)
             {
-                if (!reader.Pinned)
+                if (!reader.IsPinned)
                 {
                     reader.PinPosition();
                 }
 
                 if (reader.Finished)
                 {
-                    if (reader.Pinned)
+                    if (reader.IsPinned)
                         await writer.WriteDataAsync(reader.PinnedWindowWithCurrent, cancellationToken);
                     else
                         await writer.WriteDataAsync(reader.Window, cancellationToken);
@@ -86,7 +86,7 @@ public static class BinaryPatch
             }
             else
             {
-                if (reader.Pinned)
+                if (reader.IsPinned)
                 {
                     await writer.WriteDataAsync(reader.PinnedWindow, cancellationToken);
                     reader.ResetPinnedPosition();
