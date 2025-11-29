@@ -33,9 +33,17 @@ internal sealed class PatchWriter : IDisposable
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask WriteCopyAsync(int blockIndex, int blockLength, CancellationToken cancellationToken)
+    public ValueTask WriteCopyBlockAsync(int blockIndex, CancellationToken cancellationToken)
     {
-        _writer.Write(ProtocolConst.SegmentTypes.CopyPatchSegment);
+        _writer.Write(ProtocolConst.SegmentTypes.CopyBlock);
+        _writer.Write(blockIndex);
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask WriteCopyBlockWithLengthAsync(int blockIndex, int blockLength, CancellationToken cancellationToken)
+    {
+        _writer.Write(ProtocolConst.SegmentTypes.CopyBlockWithLength);
         _writer.Write(blockIndex);
         _writer.Write(blockLength);
 

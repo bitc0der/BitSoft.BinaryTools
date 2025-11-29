@@ -45,11 +45,19 @@ internal sealed class PatchReader : IDisposable
             case ProtocolConst.SegmentTypes.EndPatchSegment:
                 Segment = null;
                 return ValueTask.FromResult(false);
-            case ProtocolConst.SegmentTypes.CopyPatchSegment:
+            case ProtocolConst.SegmentTypes.CopyBlock:
+            {
+                var blockIndex = _reader.ReadInt32();
+                Segment = new CopyBlockSegment(blockIndex: blockIndex);
+                break;
+            }
+            case ProtocolConst.SegmentTypes.CopyBlockWithLength:
+            {
                 var blockIndex = _reader.ReadInt32();
                 var blockLength = _reader.ReadInt32();
-                Segment = new CopyPatchSegment(blockIndex: blockIndex, blockLength: blockLength);
+                Segment = new CopyBlockWithLengthSegment(blockIndex: blockIndex, blockLength: blockLength);
                 break;
+            }
             case ProtocolConst.SegmentTypes.DataPatchSegment:
                 var length = _reader.ReadInt32();
                 var span = _buffer.AsSpan(start: 0, length: length);
