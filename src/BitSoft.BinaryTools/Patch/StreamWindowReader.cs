@@ -119,7 +119,7 @@ public class StreamWindowReader : IDisposable
                 _position = 0;
                 _size = length + count;
 
-                if (count < _size)
+                if (count < _windowSize)
                 {
                     _continureRead = false;
                 }
