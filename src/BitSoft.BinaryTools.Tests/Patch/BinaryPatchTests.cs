@@ -124,8 +124,11 @@ public class BinaryPatchTests
     }
 
     [Ignore("Performance test")]
-    [TestCase(3 * 4, 4, 2, 2)]
-    [TestCase(100 * 4 * 4, 4, 5, 6)]
+    [TestCase(1024 * 1024, 512, 0, 128)]
+    [TestCase(1024 * 1024, 512, 1, 128)]
+    [TestCase(1024 * 1024, 512, 5, 128)]
+    [TestCase(1024 * 1024, 1024, 5, 128)]
+    [TestCase(1024 * 1024, 4096, 5, 128)]
     public async Task Should_CreatePatch(int bufferLength, int blockSize, int changedBlocks, int changeSize)
     {
         // Arrange
@@ -136,15 +139,18 @@ public class BinaryPatchTests
 
         Array.Copy(sourceArray: source, destinationArray: modified, length: source.Length);
 
-        var changeBlockSize = source.Length / (changedBlocks + 1);
-
-        for (var b = 1; b <= changedBlocks; b++)
+        if (changedBlocks > 0)
         {
-            var position = changeBlockSize * b;
+            var changeBlockSize = source.Length / (changedBlocks + 1);
 
-            var span = modified.AsSpan(start: position, length: changeSize);
+            for (var b = 1; b <= changedBlocks; b++)
+            {
+                var position = changeBlockSize * b;
 
-            Random.Shared.NextBytes(span);
+                var span = modified.AsSpan(start: position, length: changeSize);
+
+                Random.Shared.NextBytes(span);
+            }
         }
 
         using var sourceStream = new MemoryStream(source);
