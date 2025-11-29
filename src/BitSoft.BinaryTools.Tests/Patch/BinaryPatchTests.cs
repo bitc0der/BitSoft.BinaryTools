@@ -63,7 +63,7 @@ public class BinaryPatchTests
         Assert.That(patched, Is.EqualTo(modified));
     }
 
-    // [Ignore("Performance test")]
+    [Ignore("Performance test")]
     [TestCase(4 * 4, 4)]
     [TestCase(10 * 1024 * 1024, 1024)]
     [TestCase(10 * 1024 * 1024, 4 * 1024)]
