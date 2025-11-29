@@ -126,7 +126,7 @@ public class StreamWindowReader : IDisposable
             }
             else
             {
-                throw new InvalidOperationException("Pinned position was not reset.");
+                throw new InvalidOperationException($"Pinned position '{_pinnedPosition}' for buffer '{_bufferSize}' with window '{_windowSize}' was not reset.");
             }
         }
 
