@@ -18,6 +18,56 @@ public class BinaryPatchTests
             2
         );
         yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x1, 0x2, 0x3, 0x4 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x2, 0x3, 0x4 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x7, 0x3, 0x4, 0x5, 0x6 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x7, 0x4, 0x5, 0x6 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x7, 0x8, 0x9, 0x2 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x2, 0x3, 0x9, 0x9 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x2, 0x9, 0x9, 0x9 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x9, 0x9, 0x1, 0x2, 0x3 },
+            3
+        );
+        yield return new TestCaseData(
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8 },
+            new byte[] { 0x1, 0x2, 0x9, 0x4, 0x5, 0x6, 0x7, 0x8 },
+            3
+        );
+        yield return new TestCaseData(
             new byte[] { 0x0, 0x1 },
             new byte[] { 0x0 },
             2
@@ -98,15 +148,5 @@ public class BinaryPatchTests
         Console.WriteLine("Block size: {0}", blockSize);
         Console.WriteLine("Patch length: {0}", patchStream.Position);
         Console.WriteLine("Time: {0:g}", stopwatch.Elapsed);
-    }
-
-    [Test]
-    public void ArrayTest()
-    {
-        // Arrange
-        var sourceArray = new[] { 1, 2, 3, 4 };
-
-        // Act
-        Array.Copy(sourceArray: sourceArray, sourceIndex: 2, destinationArray: sourceArray, destinationIndex: 0, length: 2);
     }
 }

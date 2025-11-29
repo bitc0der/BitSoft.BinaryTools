@@ -212,7 +212,9 @@ public static class BinaryPatch
                 if (length == 0)
                     break;
 
-                var hash = RollingHash.Create(buffer.AsSpan(start: 0, length: length));
+                var span = buffer.AsSpan(start: 0, length: length);
+
+                var hash = RollingHash.Create(span);
 
                 if (length == blockSize)
                 {
