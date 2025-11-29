@@ -29,3 +29,5 @@ public async ValueTask ApplyPatchAsync(Stream source, Stream patch, Stream outpu
     await BinaryPatch.ApplyAsync(source, patch, output, cancellationToken: token);
 }
 ```
+
+Benchmarks you can find [here](./src/BitSoft.BinaryTools.Benchmarks/Readme.md).
