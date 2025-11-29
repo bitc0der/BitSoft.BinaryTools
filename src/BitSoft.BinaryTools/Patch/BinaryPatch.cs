@@ -30,143 +30,79 @@ public static class BinaryPatch
 
         using var reader = new StreamWindowReader(modified, Pool, windowSize: blockSize);
         using var writer = new PatchWriter(output);
-
         await writer.WriteHeaderAsync(blockSize: blockSize, cancellationToken);
 
-        var bufferLength = blockSize * 2;
-        var buffer = Pool.Rent(minimumLength: bufferLength);
-        try
+        if (!await reader.MoveAsync(cancellationToken))
         {
-            var length = await modified.ReadAsync(buffer.AsMemory(start: 0, length: bufferLength), cancellationToken);
-            if (length == 0)
-                return;
+            await writer.CompleteAsync(cancellationToken);
+            return;
+        }
 
-            const int NotDefined = -1;
+        RollingHash rollingHash = default;
+        var resetHash = true;
 
-            var segmentStart = NotDefined;
-            var position = 0;
-
-            RollingHash rollingHash = default;
-            var resetHash = true;
-
-            while (true)
+        while (true)
+        {
+            if (resetHash)
             {
-                while (position < length)
+                rollingHash = RollingHash.Create(reader.Window.Span);
+                resetHash = false;
+            }
+
+            var block = blockInfoContainer.Match(rollingHash);
+
+            if (block is null)
+            {
+                if (!reader.Pinned)
                 {
-                    if (resetHash)
-                    {
-                        var spanLength = Math.Min(blockSize, length);
-                        var bufferSpan = buffer.AsSpan(start: 0, length: spanLength);
-                        rollingHash = RollingHash.Create(bufferSpan);
-                        resetHash = false;
-                    }
-
-                    var block = blockInfoContainer.Match(rollingHash);
-
-                    if (block is null)
-                    {
-                        if (length <= blockSize)
-                        {
-                            var memory = buffer.AsMemory(start: position, length: length);
-                            await writer.WriteDataAsync(memory, cancellationToken);
-                            position = 0;
-                            break;
-                        }
-
-                        if (segmentStart == NotDefined)
-                        {
-                            segmentStart = position;
-                        }
-                        else if (position - segmentStart + 1 == blockSize)
-                        {
-                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart + 1);
-                            await writer.WriteDataAsync(memory, cancellationToken);
-
-                            buffer
-                                .AsSpan(start: position + 1, length: bufferLength - position - 2)
-                                .CopyTo(buffer.AsSpan(start: 0));
-
-                            segmentStart = NotDefined;
-                            resetHash = true;
-
-                            break;
-                        }
-
-                        position += 1;
-
-                        if (position == length)
-                        {
-                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart);
-                            await writer.WriteDataAsync(memory, cancellationToken);
-                            position = 0;
-                            break;
-                        }
-
-                        if (position + blockSize < length)
-                        {
-                            var removedByte = buffer[position - 1];
-                            var addedByte = buffer[position + blockSize - 1];
-                            rollingHash.Update(removed: removedByte, added: addedByte);
-                        }
-                        else
-                        {
-                            resetHash = true;
-                        }
-                    }
-                    else
-                    {
-                        if (segmentStart != NotDefined)
-                        {
-                            var memory = buffer.AsMemory(start: segmentStart, length: position - segmentStart);
-                            await writer.WriteDataAsync(memory, cancellationToken);
-                            segmentStart = NotDefined;
-                        }
-
-                        var blockLength = blockSize;
-
-                        if (block is PatchBlockInfoWithLength blockInfoWithLength)
-                        {
-                            blockLength = blockInfoWithLength.Length;
-
-                            await writer.WriteCopyBlockWithLengthAsync(
-                                blockIndex: block.BlockIndex,
-                                blockLength: blockLength,
-                                cancellationToken: cancellationToken
-                            );
-                        }
-                        else
-                        {
-                            await writer.WriteCopyBlockAsync(
-                                blockIndex: block.BlockIndex,
-                                cancellationToken: cancellationToken
-                            );
-                        }
-
-                        buffer
-                            .AsSpan(start: position + blockLength, length: bufferLength - position - blockLength - 1)
-                            .CopyTo(buffer.AsSpan(start: 0));
-
-                        resetHash = true;
-
-                        break;
-                    }
+                    reader.PinPosition();
+                }
+                else if (reader.Finished || reader.PinnedWindow.Length == blockSize)
+                {
+                    await writer.WriteDataAsync(reader.PinnedWindow, cancellationToken);
+                    reader.ResetPinnedPosition();
                 }
 
-                length = await modified.ReadAsync(
-                    buffer.AsMemory(start: position, length: bufferLength - position - 1),
-                    cancellationToken: cancellationToken
-                );
-
-                length += position;
-                position = 0;
-
-                if (length == 0)
+                if (reader.Finished)
+                {
+                    await writer.WriteDataAsync(reader.Window, cancellationToken);
                     break;
+                }
+
+                var firstByte = reader.Window.Span[0];
+                if (await reader.MoveAsync(cancellationToken))
+                {
+                    var newByte = reader.Window.Span[reader.Window.Length - 1];
+                    rollingHash.Update(removed: firstByte, added: newByte);
+                }
             }
-        }
-        finally
-        {
-            Pool.Return(buffer);
+            else
+            {
+                if (reader.Pinned)
+                {
+                    await writer.WriteDataAsync(reader.PinnedWindow, cancellationToken);
+                    reader.ResetPinnedPosition();
+                }
+
+                if (block is PatchBlockInfoWithLength blockInfoWithLength)
+                {
+                    await writer.WriteCopyBlockWithLengthAsync(
+                        blockIndex: block.BlockIndex,
+                        blockLength: blockInfoWithLength.Length,
+                        cancellationToken: cancellationToken
+                    );
+                }
+                else
+                {
+                    await writer.WriteCopyBlockAsync(
+                        blockIndex: block.BlockIndex,
+                        cancellationToken: cancellationToken
+                    );
+                }
+
+                await reader.MoveAsync(count: blockSize, cancellationToken);
+                resetHash = true;
+            }
         }
 
         await writer.CompleteAsync(cancellationToken);

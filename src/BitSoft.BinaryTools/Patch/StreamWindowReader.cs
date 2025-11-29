@@ -19,6 +19,7 @@ public class StreamWindowReader : IDisposable
     private int _position = NotDefined;
     private int _pinnedPosition = NotDefined;
     private int _size = NotDefined;
+    private bool _continureRead = true;
 
     public ReadOnlyMemory<byte> Window
     {
@@ -42,6 +43,8 @@ public class StreamWindowReader : IDisposable
 
     public bool Pinned => _pinnedPosition != NotDefined;
 
+    public bool Finished => _position == _size - 1;
+
     public StreamWindowReader(Stream stream, ArrayPool<byte> pool, int windowSize)
     {
         _stream = stream ?? throw new ArgumentNullException(nameof(stream));
@@ -52,8 +55,31 @@ public class StreamWindowReader : IDisposable
         _buffer = _pool.Rent(minimumLength: _bufferSize);
     }
 
+    public async ValueTask<int> MoveAsync(int count, CancellationToken cancellationToken)
+    {
+        if (count <= 0)
+            throw new ArgumentOutOfRangeException(nameof(count));
+        if (count > _windowSize)
+            throw new ArgumentOutOfRangeException(nameof(count));
+
+        for (var i = 0; i < count; i++)
+        {
+            if (await MoveAsync(cancellationToken))
+            {
+                continue;
+            }
+
+            return i;
+        }
+
+        return count;
+    }
+
     public async ValueTask<bool> MoveAsync(CancellationToken cancellationToken)
     {
+        if (_position != NotDefined && _position == _size)
+            return false;
+
         if (_position == NotDefined)
         {
             var count = await _stream.ReadAsync(_buffer.AsMemory(start: 0, length: _bufferSize), cancellationToken);
@@ -64,7 +90,7 @@ public class StreamWindowReader : IDisposable
             return true;
         }
 
-        if (_position == _bufferSize - _windowSize)
+        if (_continureRead && _position == _bufferSize - _windowSize)
         {
             if (_pinnedPosition == NotDefined)
             {
@@ -85,6 +111,11 @@ public class StreamWindowReader : IDisposable
 
                 _position = 1;
                 _size = length + count;
+
+                if (_size < _bufferSize)
+                {
+                    _continureRead = false;
+                }
             }
             else
             {
