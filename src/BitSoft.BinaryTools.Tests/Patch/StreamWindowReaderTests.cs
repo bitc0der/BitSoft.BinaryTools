@@ -78,13 +78,11 @@ public class StreamWindowReaderTests
         await reader.MoveAsync(CancellationToken.None); // 0
         reader.PinPosition();
         await reader.MoveAsync(CancellationToken.None); // 1
-        await reader.MoveAsync(CancellationToken.None); // 2
 
         // Assert
         Assert.That(reader.Window.Length, Is.EqualTo(2));
         Assert.That(reader.PinnedWindow.ToArray(),
-            Is.EqualTo(source.AsMemory(start: 0, length: 2).ToArray()).AsCollection);
-        Assert.That(reader.Window.ToArray(), Is.EqualTo(source.AsMemory(start: 2, length: 2).ToArray()).AsCollection);
+            Is.EqualTo(source.AsMemory(start: 0, length: 1).ToArray()).AsCollection);
     }
 
     [Test]

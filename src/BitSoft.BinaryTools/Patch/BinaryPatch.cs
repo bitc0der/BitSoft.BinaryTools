@@ -57,16 +57,20 @@ public static class BinaryPatch
                 {
                     reader.PinPosition();
                 }
-                else if (reader.Finished || reader.PinnedWindow.Length == blockSize)
-                {
-                    await writer.WriteDataAsync(reader.PinnedWindow, cancellationToken);
-                    reader.ResetPinnedPosition();
-                }
 
                 if (reader.Finished)
                 {
-                    await writer.WriteDataAsync(reader.Window, cancellationToken);
+                    if (reader.Pinned)
+                        await writer.WriteDataAsync(reader.PinnedWindowWithCurrent, cancellationToken);
+                    else
+                        await writer.WriteDataAsync(reader.Window, cancellationToken);
                     break;
+                }
+
+                if (reader.PinnedWindowWithCurrent.Length == blockSize)
+                {
+                    await writer.WriteDataAsync(reader.PinnedWindowWithCurrent, cancellationToken);
+                    reader.ResetPinnedPosition();
                 }
 
                 var firstByte = reader.Window.Span[0];
@@ -74,6 +78,10 @@ public static class BinaryPatch
                 {
                     var newByte = reader.Window.Span[reader.Window.Length - 1];
                     rollingHash.Update(removed: firstByte, added: newByte);
+                }
+                else
+                {
+                    break;
                 }
             }
             else
@@ -100,8 +108,14 @@ public static class BinaryPatch
                     );
                 }
 
-                await reader.MoveAsync(count: blockSize, cancellationToken);
-                resetHash = true;
+                if (await reader.SlideWindowAsync(cancellationToken))
+                {
+                    resetHash = true;
+                }
+                else
+                {
+                    break;
+                }
             }
         }
 

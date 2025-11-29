@@ -13,8 +13,8 @@ public class BinaryPatchTests
     private static IEnumerable<TestCaseData> TestCases()
     {
         yield return new TestCaseData(
-            new byte[] { 0x0, 0x1, 0x0, 0x1, 0x0 },
-            new byte[] { 0x0, 0x0, 0x1, 0x0, 0x0 },
+            new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5 },
+            new byte[] { 0x1, 0x1, 0x2, 0x3, 0x4 },
             2
         );
         yield return new TestCaseData(
@@ -63,7 +63,8 @@ public class BinaryPatchTests
         Assert.That(patched, Is.EqualTo(modified));
     }
 
-    [Ignore("Performance test")]
+    // [Ignore("Performance test")]
+    [TestCase(3 * 4, 4)]
     [TestCase(10 * 1024 * 1024, 1024)]
     [TestCase(10 * 1024 * 1024, 4 * 1024)]
     public async Task Should_CreatePatch(int bufferLength, int blockSize)
@@ -97,5 +98,15 @@ public class BinaryPatchTests
         Console.WriteLine("Block size: {0}", blockSize);
         Console.WriteLine("Patch length: {0}", patchStream.Position);
         Console.WriteLine("Time: {0:g}", stopwatch.Elapsed);
+    }
+
+    [Test]
+    public void ArrayTest()
+    {
+        // Arrange
+        var sourceArray = new[] { 1, 2, 3, 4 };
+
+        // Act
+        Array.Copy(sourceArray: sourceArray, sourceIndex: 2, destinationArray: sourceArray, destinationIndex: 0, length: 2);
     }
 }

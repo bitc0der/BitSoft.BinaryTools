@@ -41,6 +41,16 @@ public class StreamWindowReader : IDisposable
         }
     }
 
+    public ReadOnlyMemory<byte> PinnedWindowWithCurrent
+    {
+        get
+        {
+            return _pinnedPosition == NotDefined
+                ? throw new InvalidOperationException("Pinned position was not set.")
+                : _buffer.AsMemory(start: _pinnedPosition, length: _position - _pinnedPosition + 1);
+        }
+    }
+
     public bool Pinned => _pinnedPosition != NotDefined;
 
     public bool Finished => _position == _size - 1;
@@ -55,24 +65,19 @@ public class StreamWindowReader : IDisposable
         _buffer = _pool.Rent(minimumLength: _bufferSize);
     }
 
-    public async ValueTask<int> MoveAsync(int count, CancellationToken cancellationToken)
+    public async ValueTask<bool> SlideWindowAsync(CancellationToken cancellationToken)
     {
-        if (count <= 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
-        if (count > _windowSize)
-            throw new ArgumentOutOfRangeException(nameof(count));
-
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < _windowSize; i++)
         {
             if (await MoveAsync(cancellationToken))
             {
                 continue;
             }
 
-            return i;
+            return false;
         }
 
-        return count;
+        return true;
     }
 
     public async ValueTask<bool> MoveAsync(CancellationToken cancellationToken)
@@ -89,6 +94,8 @@ public class StreamWindowReader : IDisposable
             _size = count;
             return true;
         }
+
+        _position += 1;
 
         if (_continureRead && _position == _bufferSize - _windowSize)
         {
@@ -109,10 +116,10 @@ public class StreamWindowReader : IDisposable
                     cancellationToken
                 );
 
-                _position = 1;
+                _position = 0;
                 _size = length + count;
 
-                if (_size < _bufferSize)
+                if (count < _size)
                 {
                     _continureRead = false;
                 }
@@ -121,10 +128,6 @@ public class StreamWindowReader : IDisposable
             {
                 throw new InvalidOperationException("Pinned position was not reset.");
             }
-        }
-        else
-        {
-            _position += 1;
         }
 
         if (_position == _size)
