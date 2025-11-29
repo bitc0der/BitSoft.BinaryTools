@@ -26,7 +26,7 @@ public static class BinaryPatch
         if (!output.CanWrite)
             throw new ArgumentException($"{nameof(output)} does not support writing.", nameof(output));
 
-        using var hashCalculator = new HashCalculator();
+        using var hashCalculator = new HashCalculator(Pool);
 
         var blockInfoContainer = await CalculateHashesAsync(source, hashCalculator, blockSize, cancellationToken);
 

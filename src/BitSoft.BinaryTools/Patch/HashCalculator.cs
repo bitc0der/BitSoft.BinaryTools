@@ -6,10 +6,15 @@ namespace BitSoft.BinaryTools.Patch;
 
 internal sealed class HashCalculator : IDisposable
 {
-    private static ArrayPool<byte> Pool { get; } = ArrayPool<byte>.Shared;
-
     private readonly MD5 _md5 = MD5.Create();
-    private readonly byte[] _buffer = Pool.Rent(minimumLength: 16);
+    private readonly ArrayPool<byte> _pool;
+    private readonly byte[] _buffer;
+
+    public HashCalculator(ArrayPool<byte> pool)
+    {
+        _pool = pool ?? throw new ArgumentNullException(nameof(pool));
+        _buffer = _pool.Rent(minimumLength: 16);
+    }
 
     public byte[] CalculatedHash(byte[] source, int offset, int count)
     {
@@ -31,5 +36,6 @@ internal sealed class HashCalculator : IDisposable
     public void Dispose()
     {
         _md5.Dispose();
+        _pool.Return(_buffer);
     }
 }
