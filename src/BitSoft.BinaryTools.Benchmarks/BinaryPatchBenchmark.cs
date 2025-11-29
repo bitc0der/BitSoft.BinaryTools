@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
-using BitSoft.BinaryTools.Benchmarks.Utils;
 using BitSoft.BinaryTools.Patch;
 
 namespace BitSoft.BinaryTools.Benchmarks;
@@ -18,22 +17,23 @@ public class BinaryPatchBenchmark
     private Stream? _modifiedStream;
     private Stream? _patchStream;
 
-    [Params(1024 * 1024, 10 * 1024 * 1024, 100 * 1024 * 1024)]
+    [Params(1024 * 1024)]
     public int BufferLength { get; set; }
 
-    [Params(3, 5)] public int ChangedBlocks { get; set; }
+    [Params(5)]
+    public int ChangedBlocks { get; set; }
 
-    [Params(128, 512)] public int ChangeSize { get; set; }
+    [Params(512)] public int ChangeSize { get; set; }
 
-    [Params(512, 1024, 4096)] public int BlockSize { get; set; }
+    [Params(1024, 4096)] public int BlockSize { get; set; }
 
-    [GlobalSetup]
+    [IterationSetup]
     public void GlobalSetUp()
     {
         _source = new byte[BufferLength];
         _modified = new byte[BufferLength];
 
-        Create.RandomData(_source);
+        Random.Shared.NextBytes(_source);
 
         Array.Copy(sourceArray: _source, destinationArray: _modified, length: _source.Length);
 
@@ -45,30 +45,20 @@ public class BinaryPatchBenchmark
 
             var span = _modified.AsSpan(start: position, length: ChangeSize);
 
-            Create.RandomData(span);
+            Random.Shared.NextBytes(span);
         }
 
         _sourceStream = new MemoryStream(_source);
         _modifiedStream = new MemoryStream(_modified);
-    }
-
-    [IterationSetup]
-    public void SetUp()
-    {
         _patchStream = new MemoryStream();
     }
 
     [IterationCleanup]
     public void Cleanup()
     {
-        _patchStream?.Dispose();
-    }
-
-    [GlobalCleanup]
-    public void GlobalCleanUp()
-    {
         _sourceStream?.Dispose();
         _modifiedStream?.Dispose();
+        _patchStream?.Dispose();
     }
 
     [Benchmark]
