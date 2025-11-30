@@ -124,11 +124,9 @@ public class BinaryPatchTests
     }
 
     [Ignore("Performance test")]
-    [TestCase(1024 * 1024, 512, 0, 128)]
-    [TestCase(1024 * 1024, 512, 1, 128)]
-    [TestCase(1024 * 1024, 512, 5, 128)]
-    [TestCase(1024 * 1024, 1024, 5, 128)]
-    [TestCase(1024 * 1024, 4096, 5, 128)]
+    [TestCase(1024 * 1024, 256, 0, 128)]
+    [TestCase(1024 * 1024, 256, 1, 128)]
+    [TestCase(1024 * 1024, 256, 5, 128)]
     public async Task Should_CreatePatch(int bufferLength, int blockSize, int changedBlocks, int changeSize)
     {
         // Arrange
