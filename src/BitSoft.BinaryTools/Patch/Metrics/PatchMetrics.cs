@@ -1,10 +1,10 @@
 using System.Diagnostics.Metrics;
 
-namespace BitSoft.BinaryTools.Patch;
+namespace BitSoft.BinaryTools.Patch.Metrics;
 
 internal static class PatchMetrics
 {
-    private static readonly Meter Meter = new(name: "BitSoft.BinaryTools.Patch", version: "1.0");
+    private static Meter Meter { get; } = new(name: "BitSoft.BinaryTools.Patch", version: "1.0");
 
     private static readonly Counter<int> DataBlocksCounter =
         Meter.CreateCounter<int>(

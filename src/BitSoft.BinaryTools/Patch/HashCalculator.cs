@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Security.Cryptography;
+using BitSoft.BinaryTools.Patch.Metrics;
 
 namespace BitSoft.BinaryTools.Patch;
 
