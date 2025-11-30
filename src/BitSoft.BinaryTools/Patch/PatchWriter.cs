@@ -30,6 +30,8 @@ internal sealed class PatchWriter : IDisposable
         _writer.Write(memory.Length);
         _writer.Write(memory.Span);
 
+        PatchMetrics.AddDataBlock();
+
         return ValueTask.CompletedTask;
     }
 
@@ -37,6 +39,8 @@ internal sealed class PatchWriter : IDisposable
     {
         _writer.Write(ProtocolConst.SegmentTypes.CopyBlock);
         _writer.Write(blockIndex);
+
+        PatchMetrics.AddCopyBlock();
 
         return ValueTask.CompletedTask;
     }
@@ -46,6 +50,8 @@ internal sealed class PatchWriter : IDisposable
         _writer.Write(ProtocolConst.SegmentTypes.CopyBlockWithLength);
         _writer.Write(blockIndex);
         _writer.Write(blockLength);
+
+        PatchMetrics.AddCopyBlock();
 
         return ValueTask.CompletedTask;
     }
