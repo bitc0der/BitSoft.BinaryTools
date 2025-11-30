@@ -20,11 +20,15 @@ internal sealed class HashCalculator : IDisposable
     {
         ArgumentNullException.ThrowIfNull(source);
 
+        PatchMetrics.AddHashCalculation();
+
         return _md5.ComputeHash(source, offset: offset, count: count);
     }
 
     public ReadOnlySpan<byte> CalculatedHash(ReadOnlySpan<byte> source)
     {
+        PatchMetrics.AddHashCalculation();
+
         if (_md5.TryComputeHash(source: source, destination: _buffer, out var bytesWritten))
         {
             return _buffer.AsSpan(start: 0, length: bytesWritten);
