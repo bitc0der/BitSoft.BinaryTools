@@ -5,7 +5,7 @@ namespace BitSoft.BinaryTools.Tests.Patch;
 using System;
 
 [TestFixture]
-public class RollingHashTests
+public sealed class RollingHashTests
 {
     [TestCase(1024, 32)]
     [TestCase(1024, 64)]
@@ -21,8 +21,6 @@ public class RollingHashTests
         // Act & Assert
         var initialSpan = buffer.AsSpan(start: 0, length: bufferSize);
         var rollingHash = RollingHash.Create(initialSpan);
-        var gRollingHash = new Adler32RollingHash(bufferSize);
-        gRollingHash.CalculateInitialHash(initialSpan);
 
         for (var i = 0; i < bufferLength - bufferSize; i++)
         {
@@ -42,7 +40,6 @@ public class RollingHashTests
                 var newByte = buffer[i + bufferSize];
 
                 rollingHash.Update(removed: oldByte, added: newByte);
-                gRollingHash.Roll(oldByte, newByte);
             }
         }
     }
