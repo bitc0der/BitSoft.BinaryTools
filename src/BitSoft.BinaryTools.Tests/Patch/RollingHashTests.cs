@@ -11,6 +11,9 @@ public sealed class RollingHashTests
     [TestCase(1024, 64)]
     [TestCase(1024, 128)]
     [TestCase(1024, 256)]
+    [TestCase(1024, 512)]
+    [TestCase(1024 * 1024, 512)]
+    [TestCase(1024 * 1024, 1024)]
     public void Should_CalculateHash(int bufferLength, int bufferSize)
     {
         // Arrange
