@@ -6,11 +6,11 @@ public struct RollingHash
 {
     private const uint Base = 65521;
 
-    private uint _a;
-    private uint _b;
-    private readonly uint _length;
+    private long _a;
+    private long _b;
+    private readonly long _length;
 
-    private RollingHash(uint a, uint b, uint length)
+    private RollingHash(long a, long b, int length)
     {
         _a = a;
         _b = b;
@@ -19,25 +19,31 @@ public struct RollingHash
 
     public static RollingHash Create(ReadOnlySpan<byte> data)
     {
-        uint a = 1;
-        uint b = 0;
+        long a = 1;
+        long b = 0;
 
-        for (var i = 0; i < data.Length; i++)
+        foreach (var value in data)
         {
-            var value = data[i];
-
             a = (a + value) % Base;
             b = (b + a) % Base;
         }
 
-        return new RollingHash(a: a, b: b, length: (uint)data.Length);
+        return new RollingHash(a: a, b: b, length: data.Length);
     }
 
     public void Update(byte removed, byte added)
     {
-        _a = (_a - removed + added) % Base;
-        _b = (_b - _length * removed + _a - 1) % Base;
+        // Use int for calculations within s1 update
+        var s1_new = _a - removed + added;
+        // Correct potential negative result back into positive range before modulo
+        _a = (s1_new % Base + Base) % Base;
+
+        // Use long for calculations within s2 update to handle large windowSize * byteOut
+        var tempS2 = _b - _length * removed + _a - 1;
+
+        // Correct potential negative result back into positive range before modulo
+        _b = (tempS2 % Base + Base) % Base;
     }
 
-    public uint GetChecksum() => (_b << 16) | _a;
+    public uint GetChecksum() => (uint) ((_b << 16) | _a);
 }
